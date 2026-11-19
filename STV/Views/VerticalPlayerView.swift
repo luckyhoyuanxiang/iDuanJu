@@ -1432,7 +1432,7 @@ struct VerticalPager<Page: View>: UIViewControllerRepresentable {
         sv.showsVerticalScrollIndicator = false
         sv.showsHorizontalScrollIndicator = false
         sv.contentInsetAdjustmentBehavior = .never
-        sv.backgroundColor = .black
+        sv.backgroundColor = .clear
         sv.isAccessibilityElement = false
         sv.delegate = context.coordinator
         host.scrollView = sv
@@ -1485,7 +1485,8 @@ struct VerticalPager<Page: View>: UIViewControllerRepresentable {
         func sync() {
             guard let sv = scrollView, let parent, pageSize.width > 0 else { return }
             sv.isScrollEnabled = parent.scrollEnabled
-            sv.contentSize = CGSize(width: pageSize.width, height: pageSize.height * CGFloat(max(1, parent.count)))
+            let targetSize = CGSize(width: pageSize.width, height: pageSize.height * CGFloat(max(1, parent.count)))
+            if sv.contentSize != targetSize { sv.contentSize = targetSize }
             let sel = min(max(0, parent.selection), max(0, parent.count - 1))
             let window = Set(max(0, sel - 2)...max(max(0, sel - 2), min(parent.count - 1, sel + 2)))
             for key in Array(children.keys) where !window.contains(key) {
@@ -1495,7 +1496,10 @@ struct VerticalPager<Page: View>: UIViewControllerRepresentable {
             }
             for i in window where children[i] == nil {
                 let child = UIHostingController(rootView: AnyView(parent.page(i).environment(\.colorScheme, .dark)))
-                child.view.backgroundColor = .black
+                // Pages must be transparent: the current page is `Color.clear` on purpose — the video
+                // surface rides BELOW the feed in the ZStack, so opaque host views would black it out.
+                child.view.backgroundColor = .clear
+                child.view.isOpaque = false
                 child.view.frame = frame(for: i)
                 child.view.autoresizingMask = []
                 host?.addChild(child)
