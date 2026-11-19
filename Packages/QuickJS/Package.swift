@@ -4,7 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "QuickJS",
-    platforms: [.iOS(.v17), .macOS(.v14)],
+    platforms: [.iOS(.v16), .macOS(.v13)],
     products: [.library(name: "CQuickJS", targets: ["CQuickJS"])],
     targets: [
         .target(

@@ -3,9 +3,9 @@ import UniformTypeIdentifiers
 
 /// 我的 → 插件：已安装插件、添加（网址 / 文件 / 粘贴）、订阅、内置推荐、苹果 CMS 采集站、检查更新。
 struct PluginsView: View {
-    private let store = PluginStore.shared
-    private let cms = CMSStore.shared
-    private let gate = SourceGate.shared
+`1@ObservedObject private var store = PluginStore.shared
+`1@ObservedObject private var cms = CMSStore.shared
+`1@ObservedObject private var gate = SourceGate.shared
     @State private var pending: PendingInstall?
     @State private var updates: [PendingInstall] = []
     @State private var busy: String?
@@ -347,13 +347,14 @@ private struct PasteSheet: View {
 }
 
 private struct AddCMSSheet: View {
+    @ObservedObject private var cmsStore = CMSStore.shared
     let done: (String?) -> Void
     @State private var name = ""
     @State private var api = ""
     @State private var adult = false
     @State private var busy = false
     @State private var error: String?
-    private let gate = SourceGate.shared
+`1@ObservedObject private var gate = SourceGate.shared
     var body: some View {
         NavigationStack {
             Form {
@@ -390,7 +391,7 @@ private struct AddCMSSheet: View {
 /// One installed plugin: switch, settings, domains, data, logs, uninstall.
 struct PluginDetailView: View {
     let id: String
-    private let store = PluginStore.shared
+`1@ObservedObject private var store = PluginStore.shared
     @Environment(\.dismiss) private var dismiss
     @State private var newDomain = ""
     @State private var askDomain = false

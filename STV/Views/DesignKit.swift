@@ -271,9 +271,8 @@ struct ChipRow<T: Hashable>: View {
                 }
                 .padding(.leading, leading).padding(.trailing, 24)
             }
-            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
             .mask { if fade { FadeMask() } else { Color.black } }
-            .onChange(of: selection) { _, it in withAnimation(DS.select) { proxy.scrollTo(it, anchor: .center) } }
+            .onChange(of:  selection) { it in withAnimation(DS.select) { proxy.scrollTo(it, anchor: .center) } }
         }
     }
 }
@@ -625,4 +624,31 @@ struct RankListRow: View {
 /// Hairline separator (`+ .row { border-top }`).
 struct Hairline: View {
     var body: some View { STVTheme.hairline.frame(height: 1) }
+}
+
+// MARK: - iOS 16 compatibility helpers
+
+/// Scroll contentOffset.y proxy for iOS 16 (replaces iOS 18's `.onScrollGeometryChange`): attach to
+/// the root content of a ScrollView that carries `.coordinateSpace(.named(space))`. The value is how
+/// far the content top has travelled past the viewport top (0 at rest for inset-free scroll views;
+/// negative by the top safe-area inset otherwise).
+struct ScrollOffsetKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+}
+
+extension View {
+    /// Measure the scroll content's top edge in the scroll view's named coordinate space.
+    func scrollOffsetReader(space: String) -> some View {
+        background(
+            GeometryReader { g in
+                Color.clear.preference(key: ScrollOffsetKey.self, value: -g.frame(in: .named(space)).minY)
+            }
+        )
+    }
+
+    /// iOS 16.0 fallback for the iOS 16.4 `.presentationBackground(_:)` (no sheet tint below 16.4).
+    @ViewBuilder func presentationBackground16(_ color: Color) -> some View {
+        if #available(iOS 16.4, *) { self.presentationBackground(color) } else { self }
+    }
 }

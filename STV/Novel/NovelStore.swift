@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Combine
 import CryptoKit
 
 /// A book on the shelf. Imported files are converted once to `book.txt` (UTF-8) + chapter ranges, so
@@ -29,12 +29,11 @@ struct NovelProgress: Codable, Hashable {
     var updatedAt: Date
 }
 
-@MainActor @Observable
-final class NovelStore {
+@MainActor final class NovelStore: ObservableObject {
     static let shared = NovelStore()
-    private(set) var books: [NovelBook] = []
-    private(set) var progress: [String: NovelProgress] = [:]
-    @ObservationIgnored private var textCache: [String: String] = [:]
+    @Published private(set) var books: [NovelBook] = []
+    @Published private(set) var progress: [String: NovelProgress] = [:]
+    /* unobserved */ private var textCache: [String: String] = [:]
     private let d = UserDefaults.standard
 
     private init() {
@@ -195,7 +194,7 @@ final class NovelStore {
     }
 
     /// Seconds spent in the reader per book (进度 panel: 阅读时长 / 约 N 小时后读完).
-    private(set) var readTime: [String: Double] = (UserDefaults.standard.dictionary(forKey: "stv.novel.readTime") as? [String: Double]) ?? [:]
+    @Published private(set) var readTime: [String: Double] = (UserDefaults.standard.dictionary(forKey: "stv.novel.readTime") as? [String: Double]) ?? [:]
     func addReadTime(_ b: NovelBook, _ seconds: Double) {
         guard seconds > 1 else { return }
         readTime[b.id, default: 0] += min(seconds, 3600)
@@ -219,21 +218,20 @@ final class NovelStore {
 }
 
 /// Reader appearance, after WeRead: size, margins, line spacing, paper colour, typeface, indent, page turning.
-@MainActor @Observable
-final class NovelPrefs {
+@MainActor final class NovelPrefs: ObservableObject {
     static let shared = NovelPrefs()
     enum Theme: Int, CaseIterable { case white, cream, green, night }
 
-    var fontSize: Double { didSet { d.set(fontSize, forKey: "stv.novel.font") } }
+    @Published var fontSize: Double { didSet { d.set(fontSize, forKey: "stv.novel.font") } }
     /// 0 = 紧 … 1 = 松
-    var lineSpacing: Double { didSet { d.set(lineSpacing, forKey: "stv.novel.lineSpacing") } }
+    @Published var lineSpacing: Double { didSet { d.set(lineSpacing, forKey: "stv.novel.lineSpacing") } }
     /// 0 = 小 … 1 = 大
-    var margin: Double { didSet { d.set(margin, forKey: "stv.novel.margin") } }
-    var theme: Theme { didSet { d.set(theme.rawValue, forKey: "stv.novel.theme") } }
-    var turn: NovelTurnStyle { didSet { d.set(turn.rawValue, forKey: "stv.novel.turnStyle") } }
+    @Published var margin: Double { didSet { d.set(margin, forKey: "stv.novel.margin") } }
+    @Published var theme: Theme { didSet { d.set(theme.rawValue, forKey: "stv.novel.theme") } }
+    @Published var turn: NovelTurnStyle { didSet { d.set(turn.rawValue, forKey: "stv.novel.turnStyle") } }
     /// `NovelFonts.all` id.
-    var fontID: String { didSet { d.set(fontID, forKey: "stv.novel.fontID") } }
-    var indent: Bool { didSet { d.set(indent, forKey: "stv.novel.indent") } }
+    @Published var fontID: String { didSet { d.set(fontID, forKey: "stv.novel.fontID") } }
+    @Published var indent: Bool { didSet { d.set(indent, forKey: "stv.novel.indent") } }
     private let d = UserDefaults.standard
 
     private init() {

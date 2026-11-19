@@ -8,12 +8,11 @@ import AVFoundation
 /// always excluding the edge-back strip. Brightness is restored when the player goes away.
 enum AdjustSide { case brightness, volume }
 
-@MainActor @Observable
-final class PlayerAdjuster {
-    var hud: (side: AdjustSide, value: Double)?
-    private var originalBrightness: CGFloat?
-    private var startValue: Double = 0
-    private var hideTask: Task<Void, Never>?
+@MainActor final class PlayerAdjuster: ObservableObject {
+    @Published var hud: (side: AdjustSide, value: Double)?
+    @Published private var originalBrightness: CGFloat?
+    @Published private var startValue: Double = 0
+    @Published private var hideTask: Task<Void, Never>?
     /// Hidden MPVolumeView slider — the sanctioned way to set system volume.
     weak var volumeSlider: UISlider?
 

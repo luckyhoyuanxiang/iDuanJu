@@ -12,7 +12,7 @@ struct PlayerTech: Equatable {
     var audio = ""           // "AAC 2.0"
     var bitrate: Double = 0  // Mbps (indicated / estimated)
     var network: Double = 0  // bytes per second observed (0 = unknown / local file)
-    var engine = ""          // "Aether" / "AVPlayer"
+    var engine = ""          // "AVPlayer"
 
     static func channelLabel(_ channels: Int) -> String {
         channels >= 8 ? "7.1" : channels >= 6 ? "5.1" : channels == 1 ? "1.0" : channels > 0 ? "2.0" : ""

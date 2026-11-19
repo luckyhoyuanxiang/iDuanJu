@@ -135,6 +135,7 @@ import SwiftUI
 
 /// Visible verification / login page for one plugin (its own data store; same allow-list rule).
 struct PluginVerifySheet: View {
+    @ObservedObject private var pluginStore = PluginStore.shared
     let pluginID: String
     let url: URL
     var onDone: () -> Void = {}

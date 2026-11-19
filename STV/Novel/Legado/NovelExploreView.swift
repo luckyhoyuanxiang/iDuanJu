@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Source-defined sections, sidebar categories, and ranked cover rows.
 struct NovelExploreView: View {
+    @ObservedObject private var legadoSourceStore = LegadoSourceStore.shared
     var onRead: (NovelBook) -> Void
     @Environment(\.dismiss) private var dismiss
     // Keep the user's choice instead of resetting to the first (possibly unavailable) source every visit.
@@ -82,7 +83,6 @@ struct NovelExploreView: View {
             }), label: { $0 }, small: true, idPrefix: "novel.rank.group")
             .padding(.horizontal, 20)
         }
-        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         .mask(FadeMask())
     }
     private var categoryRail: some View {
@@ -201,7 +201,6 @@ struct NovelExploreView: View {
             .padding(.horizontal, 16)
         }
         .frame(height: min(240, controlHeight))
-        .scrollBounceBehavior(.basedOnSize)
     }
 
     private func select(_ category: LegadoClient.ExploreCategory) {
@@ -308,16 +307,16 @@ private struct ExploreTextControl: View {
     var body: some View {
         TextField(category.displayTitle.isEmpty ? category.title : category.displayTitle, text: $text)
             .textFieldStyle(.roundedBorder).frame(minWidth: 140).disabled(!enabled)
-            .onChange(of: text) { _, value in
+            .onChange(of:  text) { value in
                 pending?.cancel()
                 guard value != category.value else { return }
                 pending = Task { do { try await Task.sleep(for: .milliseconds(450)); onValue(value) } catch {} }
             }
-            .onChange(of: enabled) { _, value in
+            .onChange(of:  enabled) { value in
                 pending?.cancel()
                 if value && text != category.value { pending = Task { do { try await Task.sleep(for: .milliseconds(450)); onValue(text) } catch {} } }
             }
-            .onChange(of: category.value) { _, value in text = value }
+            .onChange(of:  category.value) { value in text = value }
             .onDisappear { pending?.cancel() }
     }
 }

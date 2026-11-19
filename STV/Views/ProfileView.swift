@@ -1,9 +1,13 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @ObservedObject private var mangaStore = MangaStore.shared
+    @ObservedObject private var cmsStore = CMSStore.shared
+    @ObservedObject private var tgDownloads = TGDownloads.shared
+    @ObservedObject private var tgStore = TGStore.shared
     @State private var message: String?
-    private let library = LibraryStore.shared
-    private let gate = SourceGate.shared
+`1@ObservedObject private var library = LibraryStore.shared
+`1@ObservedObject private var gate = SourceGate.shared
 
     var body: some View {
         ScrollView {

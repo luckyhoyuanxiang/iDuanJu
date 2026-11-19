@@ -26,3 +26,14 @@
 [GPL-3.0](LICENSE)。第三方组件及其许可见 [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。
 
 **禁止付费分发**：本项目是免费软件，作者不授权任何人以收费方式出售、分发本 App 或其代码。任何衍生作品都必须以 GPL-3.0 公开源代码。
+
+---
+
+## iOS 16 移植分支说明（ios16）
+
+本分支基于上游 main（v1.5 b14）做的 iOS 16 移植，非官方版本：
+
+- 按 i短剧 作者的指引移除了 AetherEngine 播放内核（iOS 18+ 专用），仅保留 AVPlayer 系统播放内核；
+- 整个 UI 层从 `@Observable`（iOS 17+）迁移到 `ObservableObject`/`@Published`，`onChange` 等视图 API 改回 iOS 16 写法；
+- 竖滑翻页改为 UIScrollView 分页实现（iOS 16 没有 `scrollTargetBehavior(.paging)`）；
+- 部署目标 18.0 → 16.0，构建号 b15。

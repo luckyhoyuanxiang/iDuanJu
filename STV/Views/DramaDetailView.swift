@@ -47,7 +47,7 @@ struct DramaDetailView: View {
     @State private var sourcesVerify: VerifyTarget?
     @State private var verifySheet: VerifyTarget?
     @Environment(\.zoomNS) private var ns
-    private let library = LibraryStore.shared
+`1@ObservedObject private var library = LibraryStore.shared
 
 
     @State private var scrollY: CGFloat = 0
@@ -75,11 +75,11 @@ struct DramaDetailView: View {
                 }
             }
             .padding(.bottom, 110)
+            .scrollOffsetReader(space: "detail")
         }
         .coordinateSpace(.named("detail"))
-        .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, y in scrollY = y }
+        .onPreferenceChange(ScrollOffsetKey.self) { scrollY = $0 }
         .scrollIndicators(.hidden)
-        .defaultScrollAnchor(DebugScroll.anchor)
         .accessibilityIdentifier("screen.detail")
         .ignoresSafeArea(edges: .top)
         .background(STVTheme.bg.ignoresSafeArea())
@@ -91,7 +91,7 @@ struct DramaDetailView: View {
             if let seededDetail { detail = seededDetail; selectResumeGroup() }
             else if detail == nil { await load() }
         }
-        .onChange(of: detail?.episodes.count) { _, _ in selectResumeGroup() }
+        .onChange(of:  detail?.episodes.count) { _ in selectResumeGroup() }
         .task(id: detail?.seriesId) {
             guard let d = detail else { return }
             if series.source.isLongVideo {
@@ -146,7 +146,7 @@ struct DramaDetailView: View {
             Image(systemName: on ? "heart.fill" : "heart")
                 .font(.system(size: 20, weight: .medium))
                 .foregroundStyle(on ? STVTheme.accent : STVTheme.text)
-                .contentTransition(.symbolEffect(.replace))
+                .contentTransition(.opacity)
                 .frame(width: size, height: size)
                 .background(Circle().fill(STVTheme.glass))
                 .overlay(Circle().strokeBorder(STVTheme.hairline, lineWidth: 1))

@@ -2,8 +2,7 @@ import SwiftUI
 import AVFoundation
 
 /// Persisted danmaku preferences (hongguo-open-player: enabled / rows / speed / opacity / likes priority) + merge toggle.
-@MainActor @Observable
-final class DanmakuSettings {
+@MainActor final class DanmakuSettings: ObservableObject {
     static let shared = DanmakuSettings()
     enum Speed: String, CaseIterable, Identifiable {
         case slow, medium, fast
@@ -27,16 +26,16 @@ final class DanmakuSettings {
         var fraction: CGFloat { switch self { case .quarter: 0.25; case .third: 0.34; case .half: 0.5; case .most: 0.75 } }
     }
 
-    var enabled: Bool { didSet { save() } }
-    var area: Area { didSet { save() } }
-    var merge: Bool { didSet { save() } }
-    var likesPriority: Bool { didSet { save() } }
-    var rows: Int { didSet { save() } }
-    var opacity: Double { didSet { save() } }
-    var speed: Speed { didSet { save() } }
-    var size: Size { didSet { save() } }
+    @Published var enabled: Bool { didSet { save() } }
+    @Published var area: Area { didSet { save() } }
+    @Published var merge: Bool { didSet { save() } }
+    @Published var likesPriority: Bool { didSet { save() } }
+    @Published var rows: Int { didSet { save() } }
+    @Published var opacity: Double { didSet { save() } }
+    @Published var speed: Speed { didSet { save() } }
+    @Published var size: Size { didSet { save() } }
     /// Live status of the current episode (not persisted).
-    var status = ""
+    @Published var status = ""
 
     private let d = UserDefaults.standard
     private init() {
@@ -184,7 +183,8 @@ struct DanmakuOverlay: View {
                     draw(&ctx, canvas)
                 }
             }
-            .onChange(of: layoutKey(size), initial: true) { _, k in relayout(size, k) }
+            .onAppear { relayout(size, layoutKey(size)) }
+            .onChange(of:  layoutKey(size)) { k in relayout(size, k) }
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
@@ -265,7 +265,7 @@ extension Color {
 }
 
 struct DanmakuSettingsSheet: View {
-    @Bindable var settings = DanmakuSettings.shared
+    @ObservedObject var settings = DanmakuSettings.shared
     var available = true
 
     var body: some View {

@@ -149,8 +149,12 @@ struct NovelPagedView: UIViewControllerRepresentable {
 /// Reader after WeRead (iOS): chapter name top-left, page number bottom-right, interactive page turning,
 /// tap the middle or swipe up for the toolbar (目录 · 书籍 · 进度 · 亮度 · 字体) and 听书.
 struct NovelReaderView: View {
+    @ObservedObject private var novelWebLoader = NovelWebLoader.shared
+    @ObservedObject private var novelFonts = NovelFonts.shared
+    @ObservedObject private var legadoSourceStore = LegadoSourceStore.shared
+    @ObservedObject private var novelPrefs = NovelPrefs.shared
     @State private var book: NovelBook
-    private let store = NovelStore.shared
+`1@ObservedObject private var store = NovelStore.shared
     @State private var prefs = NovelPrefs.shared
     @State private var fonts = NovelFonts.shared
     @State private var loader = NovelWebLoader.shared
@@ -167,7 +171,7 @@ struct NovelReaderView: View {
     @State private var hint = true
     @State private var lastLight: NovelPrefs.Theme = .white
     @State private var autoTurn = false
-    @State private var speaker = NovelSpeaker()
+    @StateObject private var speaker = NovelSpeaker()
     @State private var opened = Date()
     @State private var brightness = 0.5
     @State private var tocSearch = false
@@ -230,8 +234,8 @@ struct NovelReaderView: View {
                     Task { _ = try? await loader.refreshToc(book) }
                 }
             }
-            .onChange(of: layoutKey(geo)) { _, _ in relayout(geo) }
-            .onChange(of: book.id) { _, _ in configure(geo); restore(); if book.isWeb { loader.prefetch(book, around: ref.chapter) } }
+            .onChange(of:  layoutKey(geo)) { _ in relayout(geo) }
+            .onChange(of:  book.id) { _ in configure(geo); restore(); if book.isWeb { loader.prefetch(book, around: ref.chapter) } }
         }
         .statusBarHidden(!menu)
         .sheet(isPresented: $showDownloads) { NovelDownloadView(book: book, chapter: ref.chapter) }
@@ -250,15 +254,15 @@ struct NovelReaderView: View {
             }
         }
         .preferredColorScheme(prefs.theme == .night ? .dark : .light)
-        .onChange(of: speaker.sentence) { _, s in if let s { follow(s) } }
-        .onChange(of: loader.revision) { _, _ in
+        .onChange(of:  speaker.sentence) { s in if let s { follow(s) } }
+        .onChange(of:  loader.revision) { _ in
             guard book.isWeb else { return }
             let c = ref.chapter, o = offsetInChapter
             paginator.invalidate()
             ref = paginator.ref(chapter: c, offset: o)
             version += 1
         }
-        .onChange(of: ref.chapter) { _, c in if book.isWeb { loader.prefetch(book, around: c) } }
+        .onChange(of:  ref.chapter) { c in if book.isWeb { loader.prefetch(book, around: c) } }
         .onDisappear { loader.cancelPrefetch(book); store.addReadTime(book, Date().timeIntervalSince(opened)); speaker.stop() }
         .task {
             // WeRead shows the hint briefly when a book opens.
@@ -325,9 +329,9 @@ struct NovelReaderView: View {
                     .padding(.horizontal, hMargin).frame(maxWidth: .infinity, minHeight: 28, alignment: .leading).background(pal.bg)
             }
             .onAppear { proxy.scrollTo(ref.chapter, anchor: .top) }
-            .onChange(of: version) { _, _ in proxy.scrollTo(ref.chapter, anchor: .top) }
+            .onChange(of:  version) { _ in proxy.scrollTo(ref.chapter, anchor: .top) }
             .onTapGesture { menu ? hideMenu() : showMenu() }
-            .onChange(of: speaker.sentence) { _, s in
+            .onChange(of:  speaker.sentence) { s in
                 // 听书 in scroll mode: keep the sentence on screen (anchor at the same relative position).
                 guard let s, book.chapters.indices.contains(speaker.chapter) else { return }
                 let len = max(1, book.chapters[speaker.chapter].length)
@@ -727,7 +731,7 @@ struct NovelReaderView: View {
     /// While reading aloud with the menu closed: state + play / pause, tap to open the 听书 panel.
     private var miniPlayer: some View {
         HStack(spacing: 10) {
-            Image(systemName: "waveform").symbolEffect(.variableColor.iterative, isActive: !speaker.paused)
+            Image(systemName: "waveform")
                 .font(.system(size: 15)).foregroundStyle(NovelLayout.accent)
             Text(speaker.paused ? "已暂停" : "朗读中").font(.system(size: 13, weight: .medium)).foregroundStyle(pal.ink)
             Button { speaker.toggle() } label: {

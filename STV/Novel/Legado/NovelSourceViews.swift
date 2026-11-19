@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 /// 书源管理: import 「阅读」(Legado) JSON sources from a URL, the clipboard or a file; toggle / delete.
 struct NovelSourcesView: View {
     @Environment(\.dismiss) private var dismiss
-    private let store = LegadoSourceStore.shared
+`1@ObservedObject private var store = LegadoSourceStore.shared
     @State private var importing = false
     @State private var login: LegadoSource?
     @State private var filter: Filter = .all
@@ -140,7 +140,7 @@ struct CardSlice: View {
 struct NovelSearchView: View {
     var onRead: (NovelBook) -> Void
     @Environment(\.dismiss) private var dismiss
-    private let sources = LegadoSourceStore.shared
+`1@ObservedObject private var sources = LegadoSourceStore.shared
     @State private var query = ""
     @State private var groups: [Group] = []
     @State private var done = 0
@@ -377,7 +377,7 @@ struct NovelWebDetailView: View {
     @State private var sourceTask: Task<Void, Never>?
     @State private var loadGeneration = UUID()
     private var allItems: [LegadoSearchItem] { items + alternatives.filter { candidate in !items.contains { $0.id == candidate.id } } }
-    private let store = NovelStore.shared
+`1@ObservedObject private var store = NovelStore.shared
 
     private var item: LegadoSearchItem { allItems[min(pick, allItems.count - 1)] }
     private var source: LegadoSource? { LegadoSourceStore.shared.source(item.sourceURL) }

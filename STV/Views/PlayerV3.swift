@@ -77,7 +77,7 @@ struct PlayerCenterControls: View {
                     }
                     Image(systemName: co.paused ? "play.fill" : "pause.fill").font(.system(size: 26, weight: .regular))
                         .offset(x: co.paused ? 2 : 0)
-                        .contentTransition(.symbolEffect(.replace))
+                        .contentTransition(.opacity)
                 }
                 .frame(width: 68, height: 68)
             }
@@ -354,7 +354,7 @@ struct PlayerSectionTitle: View {
 struct SpeedPopover: View {
     let current: Double
     var landscape = false
-    /// Active core's ceiling (AetherEngine clamps video to 2×; AVPlayer 3×).
+    /// Active core's ceiling (AVPlayer: 3×).
     var maxRate: Double = 3
     let onPick: (Double) -> Void
     static let portraitSteps: [Double] = [0.5, 0.75, 1, 1.25, 1.5, 2, 3]
@@ -463,7 +463,7 @@ struct EpisodesPopover: View {
                 }
                 if ranges.count > 1 {
                     chips(ranges.map { EpisodeGroups.label($0, episodes: episodes) }, selected: group, height: 28, font: 13, id: "player.epgroup") { i in
-                        withAnimation(.snappy) { group = i }
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.83)) { group = i }
                     }
                 }
                 let r = ranges.indices.contains(group) ? ranges[group] : EpisodeRange(0, max(0, episodes.count - 1))

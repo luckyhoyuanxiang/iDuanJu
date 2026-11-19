@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Combine
 
 struct WatchProgress: Codable, Hashable, Identifiable {
     var series: HGSeries
@@ -15,15 +15,14 @@ struct WatchProgress: Codable, Hashable, Identifiable {
 }
 
 /// Local-only watch history + favorites, persisted as JSON in UserDefaults.
-@MainActor @Observable
-final class LibraryStore {
+@MainActor final class LibraryStore: ObservableObject {
     static let shared = LibraryStore()
 
-    private(set) var progress: [String: WatchProgress] = [:]
+    @Published private(set) var progress: [String: WatchProgress] = [:]
     /// Every favorite incl. hidden sources; UI reads `favorites`, which hides locked/disabled sites.
-    private(set) var allFavorites: [HGSeries] = []
+    @Published private(set) var allFavorites: [HGSeries] = []
     var favorites: [HGSeries] { allFavorites.filter { SourceGate.shared.isVisible($0) } }
-    private(set) var searchHistory: [String] = []
+    @Published private(set) var searchHistory: [String] = []
 
     private let d = UserDefaults.standard
     private init() {

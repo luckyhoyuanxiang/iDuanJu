@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Combine
 import CryptoKit
 
 /// One installed plugin (index entry). Files live in `Application Support/Plugins/<id>/`.
@@ -69,14 +69,13 @@ struct PluginSubscription: Codable, Hashable, Identifiable {
     var id: String { url }
 }
 
-@MainActor @Observable
-final class PluginStore {
+@MainActor final class PluginStore: ObservableObject {
     static let shared = PluginStore()
 
-    private(set) var plugins: [InstalledPlugin] = []
-    private(set) var subscriptions: [PluginSubscription] = []
+    @Published private(set) var plugins: [InstalledPlugin] = []
+    @Published private(set) var subscriptions: [PluginSubscription] = []
     /// Bumped on every change so views that read static snapshots re-render.
-    private(set) var revision = 0
+    @Published private(set) var revision = 0
 
     // Lock-protected copy for non-main readers (providers, runtime, DramaSource.label …).
     nonisolated(unsafe) private static var snap: [String: InstalledPlugin] = [:]

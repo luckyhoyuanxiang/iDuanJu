@@ -1,14 +1,13 @@
 import SwiftUI
 
-@MainActor @Observable
-final class Pager {
-    var items: [HGSeries] = []
-    var hasMore = true
-    var isLoading = false
-    var error: Error?
-    private(set) var page = HGPage(items: [], hasMore: true, nextOffset: 0)
-    private var fetch: ((HGPage, [HGSeries]) async throws -> HGPage)?
-    private var token = UUID()
+@MainActor final class Pager: ObservableObject {
+    @Published var items: [HGSeries] = []
+    @Published var hasMore = true
+    @Published var isLoading = false
+    @Published var error: Error?
+    @Published private(set) var page = HGPage(items: [], hasMore: true, nextOffset: 0)
+    @Published private var fetch: ((HGPage, [HGSeries]) async throws -> HGPage)?
+    @Published private var token = UUID()
 
     func reset(_ f: @escaping (HGPage, [HGSeries]) async throws -> HGPage) {
         fetch = f; items = []; hasMore = true; error = nil; isLoading = false

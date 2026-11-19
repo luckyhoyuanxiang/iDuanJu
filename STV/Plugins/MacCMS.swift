@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Combine
 import CryptoKit
 
 /// 苹果 CMS (maccms v10) 采集接口: built-in generic adapter, no JS needed.
@@ -19,11 +19,10 @@ struct CMSSite: Codable, Hashable, Identifiable {
     }
 }
 
-@MainActor @Observable
-final class CMSStore {
+@MainActor final class CMSStore: ObservableObject {
     static let shared = CMSStore()
-    private(set) var sites: [CMSSite] = []
-    private(set) var revision = 0
+    @Published private(set) var sites: [CMSSite] = []
+    @Published private(set) var revision = 0
     private let d = UserDefaults.standard
     private static let key = "stv.cms.sites"
 

@@ -1,23 +1,22 @@
 import Foundation
 import LocalAuthentication
-import Observation
+import Combine
 
 /// Which extra sources are visible. Adult long-video sites are OFF by default and only appear after
 /// the user enables them in 我的 → 片源管理; an optional Face ID lock hides them again on every cold start.
-@MainActor @Observable
-final class SourceGate {
+@MainActor final class SourceGate: ObservableObject {
     static let shared = SourceGate()
 
-    private(set) var enabled: Set<DramaSource>
-    private(set) var lockEnabled: Bool
+    @Published private(set) var enabled: Set<DramaSource>
+    @Published private(set) var lockEnabled: Bool
     /// Session flag: Face ID passed since launch (always true when the lock is off).
-    private(set) var unlocked: Bool
+    @Published private(set) var unlocked: Bool
     /// Adult Telegram channels (presets bhg1232 / NudefilmsTV, or channels the user marks adult).
-    private(set) var adultChannels: Bool
+    @Published private(set) var adultChannels: Bool
     /// Adult manga sources (none shipped yet; the switch gates any added later).
-    private(set) var adultManga: Bool
+    @Published private(set) var adultManga: Bool
     /// 黄果 (视频站 / App 源 / AI 站) is 18+: hidden until switched on here, like the long-video sites.
-    private(set) var huangguo: Bool
+    @Published private(set) var huangguo: Bool
     private let d = UserDefaults.standard
 
     private init() {

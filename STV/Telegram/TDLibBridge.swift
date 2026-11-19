@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Combine
 import Security
 
 /// Minimal Keychain wrapper (generic passwords, this device only) with a file fallback.
@@ -198,18 +198,17 @@ enum TDMsgId {
 /// (called at app launch) restarts TDLib with the saved api_id / api_hash whenever a local database exists,
 /// so TDLib reports `authorizationStateReady` on its own. Only the explicit 「退出登录」 / 「重置本地会话」
 /// buttons delete the database.
-@MainActor @Observable
-final class TDLibService {
+@MainActor final class TDLibService: ObservableObject {
     static let shared = TDLibService()
-    private(set) var state: TDAuthState
-    private(set) var chats: [TDChat] = []
-    private(set) var sensitive: (canChange: Bool, enabled: Bool) = (false, false)
-    @ObservationIgnored private var engine: TDEngine?
-    @ObservationIgnored private let makeEngine: () -> TDEngine?
-    @ObservationIgnored let baseDir: URL
-    @ObservationIgnored private var explicitLogout = false
-    @ObservationIgnored private var restarts = 0
-    @ObservationIgnored private var resolved: [String: TDChannelInfo] = [:]
+    @Published private(set) var state: TDAuthState
+    @Published private(set) var chats: [TDChat] = []
+    @Published private(set) var sensitive: (canChange: Bool, enabled: Bool) = (false, false)
+    /* unobserved */ private var engine: TDEngine?
+    /* unobserved */ private let makeEngine: () -> TDEngine?
+    /* unobserved */ let baseDir: URL
+    /* unobserved */ private var explicitLogout = false
+    /* unobserved */ private var restarts = 0
+    /* unobserved */ private var resolved: [String: TDChannelInfo] = [:]
 
     init(baseDir: URL? = nil, makeEngine: @escaping () -> TDEngine? = TDEngineFactory.make, available: Bool = TDEngineFactory.available) {
         self.baseDir = baseDir ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("tdlib", isDirectory: true)

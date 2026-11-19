@@ -3,6 +3,7 @@ import SwiftUI
 /// 四个根页面 + PlutoFish 式底部悬浮玻璃胶囊导航（系统 TabBar 隐藏）。
 /// 胶囊只在根页面显示；进入详情 / 播放器等二级页面时隐藏。
 struct RootTabView: View {
+    @ObservedObject private var tdLibService = TDLibService.shared
     @State private var tab = Int(ProcessInfo.processInfo.environment["STV_TAB"] ?? "") ?? 0
     @State private var paths = [NavigationPath(), NavigationPath(), NavigationPath(), NavigationPath()]
     static let items: [(String, String)] = [("首页", "house.fill"), ("搜索", "magnifyingglass"),

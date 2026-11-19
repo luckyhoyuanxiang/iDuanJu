@@ -1,5 +1,5 @@
 import Foundation
-import Observation
+import Combine
 
 /// One 「阅读」(Legado) book source. Decoded leniently: rule values may be strings, numbers or nested JSON
 /// (we keep them as strings); unknown keys are ignored. Only text sources (bookSourceType 0) are supported.
@@ -109,10 +109,9 @@ struct LegadoAny: Codable, Hashable {
 }
 
 /// Installed book sources (Application Support/NovelSources.json).
-@MainActor @Observable
-final class LegadoSourceStore {
+@MainActor final class LegadoSourceStore: ObservableObject {
     static let shared = LegadoSourceStore()
-    private(set) var sources: [LegadoSource] = []
+    @Published private(set) var sources: [LegadoSource] = []
 
     nonisolated static var file: URL {
         FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("NovelSources.json")

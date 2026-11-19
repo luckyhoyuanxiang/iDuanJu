@@ -33,8 +33,9 @@ struct NovelTextView: UIViewRepresentable {
 
 /// 小说 tab: local bookshelf (TXT / EPUB import). 书源 come in the next phase.
 struct NovelHomeView: View {
+    @ObservedObject private var legadoSourceStore = LegadoSourceStore.shared
     var embedded = false
-    private let store = NovelStore.shared
+`1@ObservedObject private var store = NovelStore.shared
     @State private var importing = false
     @State private var busy = false
     @State private var errors: [String] = []

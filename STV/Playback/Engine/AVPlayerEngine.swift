@@ -4,7 +4,8 @@ import MediaPlayer
 import UIKit
 
 /// The system player: every source shape (incl. the resource-loader AES path and CENC files), the
-/// fallback when AetherEngine cannot open an episode.
+/// The AVPlayer playback core: AVPlayerItem/AVPlayerLayer plus rate, PiP, tracks and buffering.
+/// (The AetherEngine software core was removed from this build; AVPlayer is the only engine.)
 @MainActor final class AVPlayerEngine: PlayerEngine {
     let kind = PlayerEngineKind.avplayer
     var onFailed: ((Error?) -> Void)?

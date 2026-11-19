@@ -2,13 +2,12 @@ import AVFoundation
 import AVKit
 import UIKit
 
-/// Which playback core plays an episode. AetherEngine is the default; AVPlayer is the fallback for
-/// sources Aether cannot take (out-of-band AES keys via the resource loader, FairPlay) and for any
-/// episode Aether failed to open.
+/// Which playback core plays an episode. The AetherEngine core (iOS 18+) was removed from this
+/// build; AVPlayer is the only core.
 enum PlayerEngineKind: String, CaseIterable, Sendable {
-    case aether, avplayer
-    var label: String { self == .aether ? "AetherEngine" : "系统播放器" }
-    var short: String { self == .aether ? "Aether" : "AVPlayer" }
+    case avplayer
+    var label: String { "系统播放器" }
+    var short: String { "AVPlayer" }
 }
 
 enum PlayerEngineSettings {
@@ -18,13 +17,13 @@ enum PlayerEngineSettings {
             #if DEBUG
             if let e = ProcessInfo.processInfo.environment["STV_ENGINE"], let k = PlayerEngineKind(rawValue: e) { return k }
             #endif
-            return UserDefaults.standard.string(forKey: key).flatMap(PlayerEngineKind.init(rawValue:)) ?? .aether
+            return UserDefaults.standard.string(forKey: key).flatMap(PlayerEngineKind.init(rawValue:)) ?? .avplayer
         }
         set { UserDefaults.standard.set(newValue.rawValue, forKey: key) }
     }
 }
 
-/// One audio / subtitle track, engine-neutral (Aether `TrackInfo` or an `AVMediaSelectionOption`).
+/// One audio / subtitle track, engine-neutral (an `AVMediaSelectionOption`).
 struct MediaTrack: Identifiable, Hashable, Sendable {
     let id: Int
     let title: String
@@ -93,6 +92,6 @@ struct MediaTrack: Identifiable, Hashable, Sendable {
     var pipIdentity: ObjectIdentifier? { get }
     func makePiPController() -> AVPictureInPictureController?
     func setPiPActive(_ active: Bool)
-    /// Short route note for the tech strip ("Aether · loopback").
+    /// Short route note for the tech strip ("AVPlayer · remote").
     var routeLabel: String { get }
 }

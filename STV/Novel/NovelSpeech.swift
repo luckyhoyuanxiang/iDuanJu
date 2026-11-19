@@ -1,35 +1,34 @@
 import AVFoundation
 import MediaPlayer
-import Observation
+import Combine
 
 /// 听书: reads the chapter sentence by sentence with the system voices. The sentence being read is
 /// exposed as `sentence` (chapter range) so the page highlights it and turns with it. Keeps playing in the
 /// background (audio session .playback / .spokenAudio), with lock-screen play / pause.
-@MainActor @Observable
-final class NovelSpeaker: NSObject, AVSpeechSynthesizerDelegate {
+@MainActor final class NovelSpeaker: NSObject, AVSpeechSynthesizerDelegate, ObservableObject {
     enum Sleep: Equatable { case off, minutes(Int), chapterEnd }
 
-    private(set) var active = false
-    private(set) var paused = false
+    @Published private(set) var active = false
+    @Published private(set) var paused = false
     /// Chapter range of the sentence being read.
-    private(set) var sentence: NSRange?
-    private(set) var chapter = 0
-    private(set) var sleepUntil: Date?
-    var sleep: Sleep = .off { didSet { sleepUntil = { if case .minutes(let m) = sleep { Date().addingTimeInterval(Double(m) * 60) } else { nil } }() } }
-    var speed: Double = UserDefaults.standard.object(forKey: "stv.novel.tts.speed") as? Double ?? 1 {
+    @Published private(set) var sentence: NSRange?
+    @Published private(set) var chapter = 0
+    @Published private(set) var sleepUntil: Date?
+    @Published var sleep: Sleep = .off { didSet { sleepUntil = { if case .minutes(let m) = sleep { Date().addingTimeInterval(Double(m) * 60) } else { nil } }() } }
+    @Published var speed: Double = UserDefaults.standard.object(forKey: "stv.novel.tts.speed") as? Double ?? 1 {
         didSet { UserDefaults.standard.set(speed, forKey: "stv.novel.tts.speed"); restartAtSentence() }
     }
-    var voiceID: String? = UserDefaults.standard.string(forKey: "stv.novel.tts.voice") {
+    @Published var voiceID: String? = UserDefaults.standard.string(forKey: "stv.novel.tts.voice") {
         didSet { UserDefaults.standard.set(voiceID, forKey: "stv.novel.tts.voice"); restartAtSentence() }
     }
     /// Called when the chapter's last sentence finished (reader moves on and calls `start` again).
-    @ObservationIgnored var onChapterEnd: ((Int) -> Void)?
-    @ObservationIgnored var nowPlaying: (title: String, chapter: String) = ("", "")
+    /* unobserved */ var onChapterEnd: ((Int) -> Void)?
+    /* unobserved */ var nowPlaying: (title: String, chapter: String) = ("", "")
 
-    @ObservationIgnored private let synth = AVSpeechSynthesizer()
-    @ObservationIgnored private var queue: [(NSRange, AVSpeechUtterance)] = []
-    @ObservationIgnored private var text = ""
-    @ObservationIgnored private var generation = 0
+    /* unobserved */ private let synth = AVSpeechSynthesizer()
+    /* unobserved */ private var queue: [(NSRange, AVSpeechUtterance)] = []
+    /* unobserved */ private var text = ""
+    /* unobserved */ private var generation = 0
 
     override init() {
         super.init()
@@ -166,7 +165,7 @@ final class NovelSpeaker: NSObject, AVSpeechSynthesizerDelegate {
 
     // MARK: Lock screen
 
-    @ObservationIgnored private var remoteTargets: [Any] = []
+    /* unobserved */ private var remoteTargets: [Any] = []
 
     private func registerRemote() {
         guard remoteTargets.isEmpty else { return }

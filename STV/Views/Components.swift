@@ -63,7 +63,7 @@ struct TextTabStrip<T: Hashable>: View {
                     }
                 }.padding(.horizontal, 16)
             }
-            .onChange(of: selection) { _, item in withAnimation(.snappy) { proxy.scrollTo(item, anchor: .center) } }
+            .onChange(of:  selection) { item in withAnimation(.spring(response: 0.35, dampingFraction: 0.83)) { proxy.scrollTo(item, anchor: .center) } }
         }
     }
 }
@@ -78,7 +78,7 @@ struct PillTabs<T: Hashable>: View {
             HStack(spacing: 6) {
                 ForEach(items, id: \.self) { it in
                     let on = it == selection
-                    Button { withAnimation(.snappy) { selection = it } } label: {
+                    Button { withAnimation(.spring(response: 0.35, dampingFraction: 0.83)) { selection = it } } label: {
                         Text(label(it))
                             .font(.subheadline.weight(on ? .semibold : .regular))
                             .foregroundStyle(on ? STVTheme.bg : STVTheme.secondary)
@@ -330,6 +330,7 @@ struct SectionHeader: View {
 // MARK: Continue watching
 
 struct ContinueRow: View {
+    @ObservedObject private var libraryStore = LibraryStore.shared
     @Environment(\.zoomNS) private var ns
     let items: [WatchProgress]
     var body: some View {
@@ -365,7 +366,6 @@ struct ContinueRow: View {
                 }.padding(.horizontal, 16)
             }
             // Content narrower than the screen → don't grab horizontal drags (首页横滑翻来源页).
-            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         }
     }
 }

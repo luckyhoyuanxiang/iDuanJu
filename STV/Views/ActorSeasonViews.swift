@@ -170,7 +170,6 @@ struct ActorView: View {
                 }
             }
         }
-        .defaultScrollAnchor(DebugScroll.anchor)
         .background(STVTheme.bg.ignoresSafeArea())
         .navigationTitle(actor.name)
         .navigationBarTitleDisplayMode(.inline)

@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 /// 长按「加入屏蔽…」: pick suggested words / domains from the post, scope global or this channel.
 struct TGBlockSheet: View {
     let post: TGPost
-    private let store = TGStore.shared
+`1@ObservedObject private var store = TGStore.shared
     @Environment(\.dismiss) private var dismiss
     @State private var picked: Set<Int> = []
     @State private var custom = ""
@@ -56,7 +56,7 @@ struct TGBlockSheet: View {
 /// Bot deep link (`t.me/<bot>?start=<payload>`): only on explicit tap, only with a TDLib session.
 struct TGBotSheet: View {
     let link: TGBotLink
-    private let td = TDLibService.shared
+`1@ObservedObject private var td = TDLibService.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @State private var replies: [TGPost] = []
@@ -99,8 +99,9 @@ struct TGBotSheet: View {
 
 /// 频道管理: subscribe, presets, per-channel adult / ad-block, t.me access address, rules, TDLib.
 struct TGManageView: View {
-    private let store = TGStore.shared
-    private let gate = SourceGate.shared
+    @ObservedObject private var tdLibService = TDLibService.shared
+`1@ObservedObject private var store = TGStore.shared
+`1@ObservedObject private var gate = SourceGate.shared
     @State private var addText = ""
     @State private var addAdult = false
     @State private var base = UserDefaults.standard.string(forKey: TGClient.baseKey) ?? ""
@@ -188,7 +189,7 @@ struct TGManageView: View {
 
 /// 屏蔽规则: mode, built-in heuristics, rules (global / per channel), import / export.
 struct TGRulesView: View {
-    private let store = TGStore.shared
+`1@ObservedObject private var store = TGStore.shared
     @State private var kind: TGRule.Kind = .keyword
     @State private var pattern = ""
     @State private var scope = ""
@@ -257,8 +258,9 @@ struct TGRulesView: View {
 
 /// Search: online (t.me/s ?q=, paged) or local full-text over cached posts; one channel or all.
 struct TGSearchView: View {
+    @ObservedObject private var tgDownloads = TGDownloads.shared
     @State var channel: String?
-    private let store = TGStore.shared
+`1@ObservedObject private var store = TGStore.shared
     @State private var q = ""
     @State private var online = true
     @State private var results: [TGPost] = []
@@ -300,8 +302,8 @@ struct TGSearchView: View {
         }
         .background(STVTheme.bg.ignoresSafeArea())
         .navigationTitle("搜索频道").navigationBarTitleDisplayMode(.inline)
-        .onChange(of: online) { _, _ in if searched { run() } }
-        .onChange(of: channel) { _, _ in if searched { run() } }
+        .onChange(of:  online) { _ in if searched { run() } }
+        .onChange(of:  channel) { _ in if searched { run() } }
         .fullScreenCover(item: $viewer) { v in ImageViewer(items: v.urls.map { .init(url: $0) }, index: v.index) }
     }
 
@@ -329,7 +331,7 @@ struct TGSearchView: View {
 
 /// 下载管理: queue, progress, pause/resume, delete, offline play, save to Photos.
 struct DownloadsView: View {
-    private let dl = TGDownloads.shared
+`1@ObservedObject private var dl = TGDownloads.shared
     @State private var viewer: ChannelFeedView.ViewerPayload?
     @State private var message: String?
 
@@ -412,7 +414,7 @@ struct DownloadsView: View {
 /// TDLib login: the user's own api_id / api_hash (Keychain), phone → code → 2FA password.
 /// Leaving this page never logs out; only 「退出登录」 (with confirmation) ends the session.
 struct TDLibSettingsView: View {
-    private let td = TDLibService.shared
+`1@ObservedObject private var td = TDLibService.shared
     @State private var apiId = TDCredentials.load()?.apiId ?? ""
     @State private var apiHash = TDCredentials.load()?.apiHash ?? ""
     @State private var phone = ""
@@ -506,7 +508,7 @@ struct TDLibSettingsView: View {
 struct TDChatView: View {
     let chatId: Int64
     let title: String
-    private let td = TDLibService.shared
+`1@ObservedObject private var td = TDLibService.shared
     @State private var posts: [TGPost] = []
     @State private var q = ""
     @State private var error: String?

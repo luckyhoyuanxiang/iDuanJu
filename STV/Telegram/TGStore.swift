@@ -1,9 +1,8 @@
 import Foundation
-import Observation
+import Combine
 
 /// Subscriptions, cached posts, filter rules and the merged 朋友圈-style feed.
-@MainActor @Observable
-final class TGStore {
+@MainActor final class TGStore: ObservableObject {
     static let shared = TGStore()
 
     /// Preset channels the user asked for. Both are adult → hidden until 片源管理 → 成人频道 is on.
@@ -12,15 +11,15 @@ final class TGStore {
         TGChannel(username: "NudefilmsTV", title: "NudefilmsTV", isAdult: true),
     ]
 
-    private(set) var channels: [TGChannel] = []
-    private(set) var posts: [String: [TGPost]] = [:]
-    private(set) var cursors: [String: Int] = [:]
-    private(set) var errors: [String: String] = [:]
-    private(set) var loading: Set<String> = []
-    private(set) var rules: [TGRule] = []
-    var mode: TGFilterMode = .fold { didSet { saveSettings() } }
-    var heuristics = true { didSet { saveSettings() } }
-    var lastRefresh: Date?
+    @Published private(set) var channels: [TGChannel] = []
+    @Published private(set) var posts: [String: [TGPost]] = [:]
+    @Published private(set) var cursors: [String: Int] = [:]
+    @Published private(set) var errors: [String: String] = [:]
+    @Published private(set) var loading: Set<String> = []
+    @Published private(set) var rules: [TGRule] = []
+    @Published var mode: TGFilterMode = .fold { didSet { saveSettings() } }
+    @Published var heuristics = true { didSet { saveSettings() } }
+    @Published var lastRefresh: Date?
 
     private let d = UserDefaults.standard
     private let dir: URL = {
@@ -114,11 +113,11 @@ final class TGStore {
 
     /// Where the current cursor of a channel came from (web `?before=` vs TDLib history).
     enum Backend: String { case web, tdlib }
-    private(set) var backend: [String: Backend] = [:]
+    @Published private(set) var backend: [String: Backend] = [:]
     /// Channels whose last load failed because TDLib is not logged in (banner shows 「去登录 TDLib」).
-    private(set) var needsTDLogin: Set<String> = []
+    @Published private(set) var needsTDLogin: Set<String> = []
     /// Channels TDLib reports as restricted for this account (banner offers 「显示敏感内容」 when allowed).
-    private(set) var tdRestricted: Set<String> = []
+    @Published private(set) var tdRestricted: Set<String> = []
 
     /// Restricted web preview → TDLib first (when logged in). Otherwise web first, TDLib as fallback.
     private func load(_ c: TGChannel, older: Bool) async {

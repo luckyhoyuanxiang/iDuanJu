@@ -17,12 +17,13 @@ struct VerticalPlayerView: View {
 }
 
 struct PlayerScreen: View {
+    @ObservedObject private var sourceGate = SourceGate.shared
     let series: HGSeries
     let startIndex: Int?
     var onSwitchSeries: (HGSeries) -> Void = { _ in }
-    @State private var co: PlaybackCoordinator
+    @StateObject private var co: PlaybackCoordinator
     @State private var seasons: [HGSeries] = []
-    private let danmaku = DanmakuSettings.shared
+`1@ObservedObject private var danmaku = DanmakuSettings.shared
     /// 画面铺满 (aspectFill) vs 完整自适应 (aspect) — hongguo-open-player fitMode.
     @AppStorage("stv.player.fill") private var fillScreen = false
     /// Technical info strip (⋯ → 技术信息).
@@ -30,7 +31,7 @@ struct PlayerScreen: View {
     @State private var muted = false
     @State private var osd: String?
     @State private var verifyTarget: VerifyTarget?
-    @State private var adjuster = PlayerAdjuster()
+    @StateObject private var adjuster = PlayerAdjuster()
     @State private var loadError: Error?
     @State private var showChrome = true
     @State private var lastInteraction = Date()
@@ -57,13 +58,13 @@ struct PlayerScreen: View {
     @State private var seekRun: (total: Int, at: Date)?
     @Environment(\.verticalSizeClass) private var vClass
     @Environment(\.dismiss) private var dismiss
-    private let library = LibraryStore.shared
+`1@ObservedObject private var library = LibraryStore.shared
 
     private var landscape: Bool { vClass == .compact }
 
     init(series: HGSeries, startIndex: Int?, onSwitchSeries: @escaping (HGSeries) -> Void = { _ in }) {
         self.series = series; self.startIndex = startIndex; self.onSwitchSeries = onSwitchSeries
-        _co = State(initialValue: PlaybackCoordinator(series: series))
+        _co = StateObject(wrappedValue: PlaybackCoordinator(series: series))
     }
 
     // MARK: Geometry
@@ -118,7 +119,7 @@ struct PlayerScreen: View {
                     }
                     .frame(width: full.width, height: full.height)
                     if let sub = co.subtitleText, !co.pipActive {
-                        // Aether loopback / software routes: the host draws the selected track's cues.
+                        // Software-rendered subtitle routes: the host draws the selected track's cues.
                         VStack {
                             Spacer()
                             Text(sub).font(.system(size: landscape ? 18 : 16, weight: .semibold)).foregroundStyle(.white)
@@ -230,20 +231,24 @@ struct PlayerScreen: View {
         } message: { Text(co.pipError ?? "") }
         .onAppear { OrientationGate.unlock() }
         .onDisappear { co.teardown(); adjuster.restoreBrightness(); OrientationGate.lockPortrait() }
-        .onChange(of: co.current) { old, _ in
+        .onChange(of: co.current) { new in
+            let switched = lastCurrent != nil
+            lastCurrent = new
             scrubbing = false
-            if old != nil { flashChrome(); centerSuppressed = true } else { flashChrome() }
+            flashChrome()
+            if switched { centerSuppressed = true }
+            if switched, let new, co.episodes.indices.contains(new) { showOSD("第\(co.episodes[new].ep)集") }
         }
-        .onChange(of: co.readyIndex) { _, index in
+        .onChange(of:  co.readyIndex) { index in
             guard index != nil else { return }
             if centerSuppressed { showChrome = true; rearmAutoHide() } else { flashChrome() }
         }
         
-        .onChange(of: landscape) { _, l in if !l { locked = false }; panel = nil }
+        .onChange(of:  landscape) { l in if !l { locked = false }; panel = nil }
         .sheet(item: $verifyTarget) { t in SiteVerifySheet(target: t) { if let c = co.current { co.activate(c) } } }
         .sheet(isPresented: $danmakuSheet, onDismiss: flashChrome) {
             DanmakuSettingsSheet(available: series.source == .hongguo)
-                .presentationDragIndicator(.visible).presentationBackground(STVTheme.surface)
+                .presentationDragIndicator(.visible).presentationBackground16(STVTheme.surface)
         }
     }
 
@@ -285,27 +290,21 @@ struct PlayerScreen: View {
 
     // MARK: Episode feed
 
+    @State private var lastCurrent: Int?
+
     private var episodeFeed: some View {
-        ScrollView(.vertical) {
-            LazyVStack(spacing: 0) {
-                ForEach(co.episodes.indices, id: \.self) { i in
-                    stage(i).containerRelativeFrame([.horizontal, .vertical]).id(i)
-                }
-            }.scrollTargetLayout()
-        }
-        .scrollTargetBehavior(.paging)
-        .scrollIndicators(.hidden)
-        .scrollPosition(id: Binding(get: { co.current }, set: { co.select($0) }), anchor: .center)
-        .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y }) { _, y in feedScrollY = y }
-        .sensoryFeedback(.selection, trigger: co.current)
-        .onChange(of: co.readyIndex) { _, _ in releaseHeldIfSettled() }
-        .onScrollPhaseChange { _, phase in feedSettled = phase == .idle; releaseHeldIfSettled() }
+        VerticalPager(
+            count: co.episodes.count,
+            selection: co.current ?? 0,
+            scrollEnabled: !(locked || speedMode || scrubbing || co.pipActive || panel != nil),
+            onOffset: { feedScrollY = $0 },
+            onSettled: { settled in feedSettled = settled; if settled { releaseHeldIfSettled() } },
+            onPageSettled: { co.select($0) },
+            page: { i in stage(i) }
+        )
         .accessibilityIdentifier("player.feed")
         .accessibilityValue(feedSettled ? "idle" : "scrolling")
-        .onChange(of: co.current) { old, new in
-            if old != nil, let new, co.episodes.indices.contains(new) { showOSD("第\(co.episodes[new].ep)集") }
-        }
-        .scrollDisabled(locked || speedMode || scrubbing || co.pipActive || panel != nil)
+        .onChange(of: co.readyIndex) { _ in releaseHeldIfSettled() }
     }
 
     /// Drop the previous episode's still once the new one is playing and the page has stopped moving.
@@ -314,6 +313,9 @@ struct PlayerScreen: View {
         co.releaseHeldFrame()
     }
     @State private var feedSettled = true
+    /// Previous co.current snapshot: the two-parameter onChange form is iOS 17-only, so the
+    /// merged single-parameter onChange above uses this to tell an initial set from a switch.
+    @State private var lastCurrent: Int?
 
     /// Offset of page `index` from rest, capped at one page either way.
     private func pageDrift(_ index: Int, page: CGFloat) -> CGFloat {
@@ -1027,7 +1029,7 @@ struct EpisodePickerSheet: View {
                     HStack(spacing: 8) {
                         ForEach(ranges.indices, id: \.self) { i in
                             let on = i == group
-                            Button { withAnimation(.snappy) { group = i } } label: {
+                            Button { withAnimation(.spring(response: 0.35, dampingFraction: 0.83)) { group = i } } label: {
                                 Text(EpisodeGroups.label(ranges[i], episodes: episodes))
                                     .font(.subheadline.weight(on ? .semibold : .regular))
                                     .padding(.horizontal, 14).padding(.vertical, 7)
@@ -1068,12 +1070,11 @@ struct PosterBackdrop: View {
     }
 }
 
-/// Hosts the active core's video surface (AetherPlayerView or an AVPlayerLayer view); swapped when an
-/// episode falls back from AetherEngine to AVPlayer.
+/// Hosts the active core's video surface (an AVPlayerLayer view).
 struct PlayerLayerView: UIViewRepresentable {
     let coordinator: PlaybackCoordinator
     var fill: Bool = false
-    var engine: PlayerEngineKind = .aether
+    var engine: PlayerEngineKind = .avplayer
 
     func makeUIView(context: Context) -> PlayerRenderHost {
         let view = PlayerRenderHost()
@@ -1398,5 +1399,163 @@ private struct ChromeFade: ViewModifier {
     var keepAccessible = false
     func body(content: Content) -> some View {
         content.opacity(on ? 1 : 0).allowsHitTesting(on).accessibilityHidden(!on && !keepAccessible)
+    }
+}
+
+// MARK: - Vertical pager (iOS 16 counterpart of the iOS 17 paging ScrollView)
+
+/// Vertical page-snapping episode feed built on a paging UIScrollView - the iOS 16 replacement for
+/// `scrollTargetBehavior(.paging)` + `scrollPosition(id:)` + `onScrollGeometryChange/PhaseChange`.
+/// Pages are hosted UIHostingControllers kept for the selection's +-2 neighbourhood; delegates feed
+/// contentOffset / settled state back to SwiftUI, and user swipes settle through `onPageSettled`.
+/// `PlayerTouchCatcher`'s gesture arbitration (edge strips, adjust pan vs scroll view pan) was
+/// written against a paging UIScrollView and keeps working unchanged.
+struct VerticalPager<Page: View>: UIViewControllerRepresentable {
+    var count: Int
+    /// Selected page (`co.current`), mapped to 0 while nil.
+    var selection: Int
+    /// False disables scrolling (lock / speed / scrub / PiP / panel states).
+    var scrollEnabled: Bool
+    /// contentOffset.y while the feed moves (drives the shared video surface ride-along).
+    var onOffset: (CGFloat) -> Void
+    /// true = feed idle; false = user drag / programmatic scroll in flight.
+    var onSettled: (Bool) -> Void
+    /// The page the user swiped to (selection binding side; co.select fires here).
+    var onPageSettled: (Int) -> Void
+    @ViewBuilder var page: (Int) -> Page
+
+    func makeCoordinator() -> Coordinator<Page> { Coordinator<Page>() }
+
+    func makeUIViewController(context: Context) -> PagerHost {
+        let host = PagerHost()
+        let sv = UIScrollView()
+        sv.alwaysBounceVertical = true
+        sv.isPagingEnabled = true
+        sv.showsVerticalScrollIndicator = false
+        sv.showsHorizontalScrollIndicator = false
+        sv.contentInsetAdjustmentBehavior = .never
+        sv.backgroundColor = .black
+        sv.isAccessibilityElement = false
+        sv.delegate = context.coordinator
+        host.scrollView = sv
+        host.view = sv
+        context.coordinator.parent = self
+        context.coordinator.host = host
+        context.coordinator.scrollView = sv
+        let co = context.coordinator
+        host.onLayout = { [weak co] in co?.layout() }
+        return host
+    }
+
+    func updateUIViewController(_ host: PagerHost, context: Context) {
+        context.coordinator.parent = self
+        context.coordinator.sync()
+    }
+
+    static func dismantleUIViewController(_ host: PagerHost, coordinator: Coordinator<Page>) {
+        coordinator.teardown()
+        host.onLayout = nil
+    }
+
+    final class Coordinator<Page: View>: NSObject, UIScrollViewDelegate {
+        fileprivate var parent: VerticalPager<Page>?
+        weak var host: PagerHost?
+        weak var scrollView: UIScrollView?
+        private var children: [Int: UIHostingController<AnyView>] = [:]
+        private var isProgrammatic = false
+        private var pageSize: CGSize = .zero
+
+        func teardown() {
+            for (_, child) in children { child.view.removeFromSuperview(); child.removeFromParent() }
+            children.removeAll()
+        }
+
+        func layout() {
+            guard let sv = scrollView, let parent, sv.bounds.width > 0, sv.bounds.height > 0 else { return }
+            let size = sv.bounds.size
+            if pageSize != size {
+                pageSize = size
+                for (i, child) in children { child.view.frame = frame(for: i) }
+            }
+            sync()
+        }
+
+        private func frame(for i: Int) -> CGRect {
+            CGRect(x: 0, y: CGFloat(i) * pageSize.height, width: pageSize.width, height: pageSize.height)
+        }
+
+        func sync() {
+            guard let sv = scrollView, let parent, pageSize.width > 0 else { return }
+            sv.isScrollEnabled = parent.scrollEnabled
+            sv.contentSize = CGSize(width: pageSize.width, height: pageSize.height * CGFloat(max(1, parent.count)))
+            let sel = min(max(0, parent.selection), max(0, parent.count - 1))
+            let window = Set(max(0, sel - 2)...min(parent.count - 1, sel + 2))
+            for key in children.keys where !window.contains(key) {
+                guard let child = children.removeValue(forKey: key) else { continue }
+                child.view.removeFromSuperview()
+                child.removeFromParent()
+            }
+            for i in window where children[i] == nil {
+                let child = UIHostingController(rootView: AnyView(parent.page(i).environment(\.colorScheme, .dark)))
+                child.view.backgroundColor = .black
+                child.view.frame = frame(for: i)
+                child.view.autoresizingMask = []
+                host?.addChild(child)
+                sv.addSubview(child.view)
+                child.didMove(toParent: host)
+                children[i] = child
+            }
+            for (i, child) in children {
+                child.rootView = AnyView(parent.page(i).environment(\.colorScheme, .dark))
+            }
+            // Follow programmatic selection changes (autoNext / episode picker) unless the user is driving.
+            let target = CGPoint(x: 0, y: CGFloat(sel) * pageSize.height)
+            if !isProgrammatic, sv.contentOffset != target, !sv.dragging, !sv.decelerating, parent.scrollEnabled {
+                isProgrammatic = true
+                sv.setContentOffset(target, animated: true)
+            }
+        }
+
+        func scrollViewDidScroll(_ sv: UIScrollView) {
+            parent?.onOffset(sv.contentOffset.y)
+        }
+
+        func scrollViewWillBeginDragging(_ sv: UIScrollView) {
+            isProgrammatic = false
+            parent?.onSettled(false)
+        }
+
+        func scrollViewDidEndDragging(_ sv: UIScrollView, willDecelerate decelerate: Bool) {
+            if !decelerate { parent?.onSettled(true) }
+        }
+
+        func scrollViewDidEndDecelerating(_ sv: UIScrollView) {
+            parent?.onSettled(true)
+            settlePage(sv)
+        }
+
+        func scrollViewDidEndScrollingAnimation(_ sv: UIScrollView) {
+            isProgrammatic = false
+            parent?.onSettled(true)
+        }
+
+        private func settlePage(_ sv: UIScrollView) {
+            guard let parent, pageSize.height > 0 else { return }
+            let page = Int(round(sv.contentOffset.y / pageSize.height))
+            let clamped = min(max(0, page), max(0, parent.count - 1))
+            guard clamped != parent.selection else { return }
+            UISelectionFeedbackGenerator().selectionChanged()
+            parent.onPageSettled(clamped)
+        }
+    }
+}
+
+/// Plain UIViewController wrapper so page hosting controllers get a parent and layout passes.
+final class PagerHost: UIViewController {
+    weak var scrollView: UIScrollView?
+    var onLayout: (() -> Void)?
+    override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
+        onLayout?()
     }
 }

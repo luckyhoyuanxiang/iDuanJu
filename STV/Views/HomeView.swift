@@ -66,13 +66,12 @@ enum HomeSource: Hashable, Identifiable {
 }
 
 /// Caches the first page of each rank board for the home cards.
-@MainActor @Observable
-final class BoardCache {
+@MainActor final class BoardCache: ObservableObject {
     static let shared = BoardCache()
-    var items: [String: [HGSeries]] = [:]
-    var loading: Set<String> = []
-    var failed: Set<String> = []
-    var errors: [String: Error] = [:]
+    @Published var items: [String: [HGSeries]] = [:]
+    @Published var loading: Set<String> = []
+    @Published var failed: Set<String> = []
+    @Published var errors: [String: Error] = [:]
     func load(_ b: BoardSpec, force: Bool = false) {
         guard !loading.contains(b.id), force || items[b.id] == nil else { return }
         loading.insert(b.id); failed.remove(b.id); errors[b.id] = nil
@@ -88,6 +87,7 @@ final class BoardCache {
 /// 分类条联动（选中项自动滚到居中、指示条跟随）。每页：二级榜单选择 → 竖海报 hero → 真实榜单分段。
 /// 横滑冲突：hero 轮播区域内的横滑归轮播；其它区域横滑翻来源页；首页是根页面，没有系统侧滑返回。
 struct HomeView: View {
+    @ObservedObject private var sourceGate = SourceGate.shared
     @State private var source: HomeSource
     @State private var subs: [HomeSource: HomeTab]
     @State private var heroCovers: [HomeSource: String] = [:]
@@ -139,7 +139,7 @@ struct HomeView: View {
         .dsAmbient(visible: !pinned)
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showChannels) { channelPanel }
-        .onChange(of: SourceGate.shared.visibleSites) { _, _ in if !HomeSource.all.contains(source) { source = .hongguo } }
+        .onChange(of:  SourceGate.shared.visibleSites) { _ in if !HomeSource.all.contains(source) { source = .hongguo } }
     }
 
     // MARK: Header (search + filter, source bar)
@@ -229,6 +229,7 @@ struct HomeView: View {
 
 /// One source page: secondary board chips → hero → real board sections. Vertical scroll inside a horizontal pager.
 private struct HomeFeedPage: View {
+    @ObservedObject private var actorRankStore = ActorRankStore.shared
     let source: HomeSource
     @Binding var tab: HomeTab
     var onHero: (String) -> Void
@@ -236,8 +237,8 @@ private struct HomeFeedPage: View {
     @State private var legacyChannels: [HuangguoChannel] = []
     @State private var legacyError: Error?
     @State private var heroIndex = 0
-    private let cache = BoardCache.shared
-    private let library = LibraryStore.shared
+`1@ObservedObject private var cache = BoardCache.shared
+`1@ObservedObject private var library = LibraryStore.shared
     private let gutter: CGFloat = 16
     /// DEBUG `STV_HOME_SCROLL=bottom` opens the feed scrolled to the end (simulator screenshots).
     private static var debugAnchor: UnitPoint? {
@@ -275,10 +276,11 @@ private struct HomeFeedPage: View {
             }
             .padding(.bottom, 24)
             .animation(.easeOut(duration: 0.25), value: heroPicks.isEmpty)
+            .scrollOffsetReader(space: "homeFeedScroll")
         }
         .scrollIndicators(.hidden)
-        .defaultScrollAnchor(Self.debugAnchor)
-        .onScrollGeometryChange(for: Bool.self) { g in g.contentOffset.y + g.contentInsets.top > 4 } action: { _, v in onScrolled(v) }
+        .coordinateSpace(.named("homeFeedScroll"))
+        .onPreferenceChange(ScrollOffsetKey.self) { off in onScrolled(off > 4) }
         .accessibilityIdentifier("home.page.\(source.label)")
         .refreshable { if tab == .actorRank { await ActorRankStore.shared.reload() } else { boards.forEach { cache.load($0, force: true) } } }
         .task(id: tab) {
@@ -286,8 +288,8 @@ private struct HomeFeedPage: View {
             if case .huangguo(.legacy) = tab, legacyChannels.isEmpty { await loadLegacy() }
         }
         .onAppear { boards.prefix(1).forEach { cache.load($0) }; reportHero() }
-        .onChange(of: tab) { _, _ in boards.prefix(1).forEach { cache.load($0) } }
-        .onChange(of: heroKey) { _, _ in reportHero() }
+        .onChange(of:  tab) { _ in boards.prefix(1).forEach { cache.load($0) } }
+        .onChange(of:  heroKey) { _ in reportHero() }
     }
 
     private var heroKey: String { (heroPicks.indices.contains(heroIndex) ? heroPicks[heroIndex].cover : "") + "\(heroIndex)" }
@@ -311,7 +313,6 @@ private struct HomeFeedPage: View {
                 }
             }.padding(.horizontal, gutter)
         }
-        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         .mask(FadeMask())
         .padding(.top, 18)
     }
@@ -383,11 +384,12 @@ private struct HomeFeedPage: View {
 
 /// CMS / JS plugin home: every returned category is a selectable module, and the selected one pages its own list.
 private struct DynamicSiteFeed: View {
+    @ObservedObject private var cmsStore = CMSStore.shared
     let source: DramaSource
     var onHero: (String) -> Void
     @State private var categories: [SiteCategory] = []
     @State private var selected = ""
-    @State private var pager = Pager()
+    @StateObject private var pager = Pager()
     @State private var heroCover: String?
 
     var body: some View {
@@ -410,7 +412,7 @@ private struct DynamicSiteFeed: View {
         .accessibilityIdentifier("home.page.\(source.label)")
         .refreshable { await refresh() }
         .task { await refresh() }
-        .onChange(of: heroCover) { _, cover in if let cover { onHero(cover) } }
+        .onChange(of:  heroCover) { cover in if let cover { onHero(cover) } }
     }
 
     private var chips: some View {
@@ -430,7 +432,6 @@ private struct DynamicSiteFeed: View {
                 }
             }.padding(.horizontal, 16)
         }
-        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         .padding(.bottom, 4)
     }
 
@@ -527,7 +528,7 @@ struct HomeChannelBar<T: Hashable>: View {
                 .accessibilityIdentifier("home.channels")
                 .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.88),
                                              .init(color: .clear, location: 1)], startPoint: .leading, endPoint: .trailing))
-                .onChange(of: selection) { _, it in withAnimation(.snappy) { proxy.scrollTo(it, anchor: .center) } }
+                .onChange(of:  selection) { it in withAnimation(.spring(response: 0.35, dampingFraction: 0.83)) { proxy.scrollTo(it, anchor: .center) } }
                 .onAppear { proxy.scrollTo(selection, anchor: .center) }
             }
             Button(action: onExpand) {
@@ -692,6 +693,7 @@ private struct PosterHero: View {
 
 /// ui-redesign 10 `.cw`: horizontal 继续观看 cards with progress and a round play button.
 struct HomeContinueRow: View {
+    @ObservedObject private var libraryStore = LibraryStore.shared
     @Environment(\.zoomNS) private var ns
     let items: [WatchProgress]
     var body: some View {
@@ -714,7 +716,6 @@ struct HomeContinueRow: View {
                 }
                 .padding(.horizontal, 16).padding(.vertical, 2)
             }
-            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
         }
     }
 
@@ -774,7 +775,6 @@ struct HomeShelf: View {
                     }
                     .padding(.horizontal, 16)
                 }
-                .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
             }
         }
     }
@@ -860,7 +860,7 @@ struct HomePosterCard: View {
 /// Full list of one board, 3-column numbered grid with infinite paging.
 struct BoardListView: View {
     let board: BoardSpec
-    @State private var pager = Pager()
+    @StateObject private var pager = Pager()
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         ScrollView {

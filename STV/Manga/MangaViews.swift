@@ -2,6 +2,8 @@ import SwiftUI
 
 /// 漫画 home: source switch, category chips, cover grid, search, 继续阅读 / 收藏.
 struct MangaHomeView: View {
+    @ObservedObject private var pluginStore = PluginStore.shared
+    @ObservedObject private var sourceGate = SourceGate.shared
     @Environment(\.zoomNS) private var ns
     var embedded = false
     @State private var source: MangaSourceID = .baozi
@@ -13,7 +15,7 @@ struct MangaHomeView: View {
     @State private var error: String?
     @State private var query = ""
     @State private var searching: String?
-    private let store = MangaStore.shared
+`1@ObservedObject private var store = MangaStore.shared
 
     private var provider: MangaProvider { MangaFixtures.provider ?? source.provider }
     private var cats: [MangaCategory] { _ = PluginStore.shared.revision; return provider.categories }
@@ -69,7 +71,7 @@ struct MangaHomeView: View {
         .navigationTitle(embedded ? "" : "漫画").navigationBarTitleDisplayMode(.inline)
         .toolbar(embedded ? .hidden : .visible, for: .navigationBar)
         .task(id: "\(source.rawValue)|\(category?.id ?? "")") { await load(more: false) }
-        .onChange(of: sources) { _, now in if !now.contains(source) { category = nil; source = .baozi } }
+        .onChange(of:  sources) { now in if !now.contains(source) { category = nil; source = .baozi } }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("manga.home")
     }
@@ -127,7 +129,8 @@ struct MangaCell: View {
 
 /// 书架: favorites + offline chapters.
 struct MangaLibraryView: View {
-    private let store = MangaStore.shared
+    @ObservedObject private var sourceGate = SourceGate.shared
+`1@ObservedObject private var store = MangaStore.shared
     var body: some View {
         List {
             Section("收藏（\(store.favorites.count)）") {
@@ -162,7 +165,7 @@ struct MangaDetailView: View {
     @State private var error: String?
     @State private var ascending = true
     @State private var reader: ReaderTarget?
-    private let store = MangaStore.shared
+`1@ObservedObject private var store = MangaStore.shared
     private var provider: MangaProvider { MangaFixtures.provider ?? item.source.provider }
 
     struct ReaderTarget: Identifiable { let chapters: [MangaChapter]; let index: Int; let page: Int; var id: Int { index } }
@@ -264,7 +267,7 @@ struct MangaReaderView: View {
     @State private var baseScale: CGFloat = 1
     @State private var visible: Set<Int> = []
     @Environment(\.dismiss) private var dismiss
-    private let store = MangaStore.shared
+`1@ObservedObject private var store = MangaStore.shared
     private var provider: MangaProvider { MangaFixtures.provider ?? item.source.provider }
     private var chapter: MangaChapter { chapters[index] }
 
@@ -279,14 +282,14 @@ struct MangaReaderView: View {
         }
         .statusBarHidden(!chrome)
         .task(id: index) { await load() }
-        .onChange(of: page) { _, p in
+        .onChange(of:  page) { p in
             store.record(item, chapter, page: p, of: pages.count)
             preload(from: p)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("manga.reader")
         .preferredColorScheme(.dark)
-        .onChange(of: vertical) { _, _ in visible = [] }
+        .onChange(of:  vertical) { _ in visible = [] }
     }
 
     private var verticalReader: some View {

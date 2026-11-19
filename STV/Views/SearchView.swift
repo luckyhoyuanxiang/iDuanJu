@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SearchView: View {
+    @ObservedObject private var sourceGate = SourceGate.shared
     var pushed = false
     var initialQuery: String? = nil
     var startEditingHistory = false
@@ -13,12 +14,12 @@ struct SearchView: View {
         #endif
         return .hongguo
     }()
-    @State private var pager = Pager()
+    @StateObject private var pager = Pager()
     @State private var hot: [HGSeries] = []
     @State private var hotError: Error?
     @State private var discoverSeed = 0
     @State private var editingHistory = false
-    private let library = LibraryStore.shared
+`1@ObservedObject private var library = LibraryStore.shared
 
     var body: some View {
         VStack(spacing: 10) {

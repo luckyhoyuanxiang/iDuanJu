@@ -19,7 +19,7 @@ struct CategoryView: View {
     @State private var selected: [String: String] = [:]
     /// Display names of the selected option per dimension (the panel reloads per 剧种).
     @State private var selectedNames: [String: String] = [:]
-    @State private var pager = Pager()
+    @StateObject private var pager = Pager()
     @State private var panelGeneration = 0
     @State private var collapsed = false
     @State private var scrolled = false
@@ -37,10 +37,12 @@ struct CategoryView: View {
                     .transition(.opacity)
                 }
                 .padding(.bottom, 24)
+                .scrollOffsetReader(space: "categoryScroll")
             }
             .scrollIndicators(.hidden)
-            .onScrollGeometryChange(for: Bool.self) { g in g.contentOffset.y + g.contentInsets.top > 6 } action: { _, v in
-                withAnimation(.easeOut(duration: 0.2)) { scrolled = v }
+            .coordinateSpace(.named("categoryScroll"))
+            .onPreferenceChange(ScrollOffsetKey.self) { off in
+                withAnimation(.easeOut(duration: 0.2)) { scrolled = off > 6 }
             }
             .overlay(alignment: .top) { topFade }
             .overlay(alignment: .top) {
@@ -197,7 +199,6 @@ struct CategoryView: View {
                 }
                 .animation(DS.select, value: list)
             }
-            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
             Button { resetAll() } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "arrow.counterclockwise").font(.system(size: 12, weight: .semibold))
