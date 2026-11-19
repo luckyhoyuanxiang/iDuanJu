@@ -663,7 +663,14 @@ import UIKit
             case .mp4Clear, .hls, .hlsAES:
                 let budget = bypass ? 0 : BufferSettings.budget(for: series.source)
                 if budget > 0, let proxied = await self?.prebuffered(s, budget: budget, index: i) { return proxied }
-                return .stream(HLSPlayback(headers: s.headers, keyHex: s.key), s.url)
+                if s.kind == .mp4Clear, let u = URL(string: s.url) { return .remote(u, s.headers) }
+                // All HLS — AES-128 with an out-of-band key included — through the loopback proxy.
+                // The AVAssetResourceLoader path (HLSPlayback) throws uncatchable ObjC exceptions on
+                // iOS 16.1 whenever AVPlayer cancels or stales a request; it aborted 黄果 playback.
+                guard let proxied = await self?.proxiedHLS(s, index: i), let u = URL(string: proxied) else {
+                    throw ProviderError.upstream("本地播放代理启动失败")
+                }
+                return .direct(u)
             }
         }
         tasks[i] = task
@@ -692,6 +699,23 @@ import UIKit
         guard let proxied, let u = URL(string: proxied), let tok = LocalHLSProxy.token(of: proxied) else { return nil }
         prefetchTokens[i] = tok
         return .direct(u)
+    }
+
+    /// All HLS — AES-128 with an out-of-band key included — served through the loopback proxy.
+    /// The AVAssetResourceLoader path (HLSPlayback) throws uncatchable ObjC exceptions on iOS 16.1
+    /// whenever AVPlayer cancels or stales a request (黄果 exits, .ips 2026-11-19 17:03).
+    private func proxiedHLS(_ s: HGStream, index i: Int) -> URL? {
+        let keyBytes = s.key.isEmpty ? nil : Bytes.fromHex(s.key)
+        let proxied: String?
+        if s.kind == .hlsAES, let key = keyBytes {
+            proxied = LocalHLSProxy.shared.aesPlaylistURL(s.url, headers: s.headers, key: Data(key), strip: false)
+        } else {
+            proxied = LocalHLSProxy.shared.playlistURL(s.url, headers: s.headers, strip: false, budget: 0)
+        }
+        guard let proxied, let tok = LocalHLSProxy.token(of: proxied) else { return nil }
+        if let old = prefetchTokens[i], old != tok { LocalHLSProxy.shared.release(old) }
+        prefetchTokens[i] = tok
+        return URL(string: proxied)
     }
 
     /// 红果 CENC MP4 served decrypted by the loopback proxy while it downloads (nil: not streamable).

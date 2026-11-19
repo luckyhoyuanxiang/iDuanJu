@@ -25,6 +25,8 @@ final class LocalHLSProxy: @unchecked Sendable {
         var cenc: CENCDecryptor.RangePlan?
         /// MP4 chunk size (CENC uses small chunks so the header and first frames arrive fast on slow links).
         var chunk = BufferSettings.mp4Chunk
+        /// Huangguo AES-128 with an out-of-band key: resolved key bytes served from memory.
+        var aesKey: Data?
     }
     static let shared = LocalHLSProxy()
 
@@ -49,6 +51,15 @@ final class LocalHLSProxy: @unchecked Sendable {
     /// Proxy URL for a progressive MP4 (Range requests served chunk-wise from the prefetch cache).
     func mp4URL(_ upstream: String, headers: [String: String], budget: Int) -> String? {
         register(upstream, headers: headers, strip: false, budget: budget, kind: "v.mp4")
+    }
+
+    /// Proxy URL for an HLS stream whose AES-128 key is resolved out-of-band (黄果): the key bytes
+    /// are served from memory and every #EXT-X-KEY URI in the playlist is rewritten to that route.
+    func aesPlaylistURL(_ upstream: String, headers: [String: String], key: Data, strip: Bool = false) -> String? {
+        guard let u = register(upstream, headers: headers, strip: strip, budget: 0, kind: "p.m3u8"),
+              let token = Self.token(of: u) else { return nil }
+        lock.lock(); routes[token]?.aesKey = key; lock.unlock()
+        return u
     }
 
     /// Proxy URL for an encrypted (CENC AES-CTR) progressive MP4, decrypted range by range as it is served,
@@ -253,6 +264,10 @@ final class LocalHLSProxy: @unchecked Sendable {
               url.scheme == "https" || url.scheme == "http" else { return reply(c, 404, "text/plain", Data()) }
         guard let rt = route(segs[0]) else { return reply(c, 404, "text/plain", Data()) }
         let headers = rt.headers
+        if segs[1] == "aeskey" {
+            guard let key = rt.aesKey else { return reply(c, 404, "text/plain", Data("no key".utf8)) }
+            return reply(c, 200, "application/octet-stream", key)
+        }
         if segs[1] == "v.mp4" { return await serveMP4(c, token: segs[0], url: url, route: rt, range: rangeHeader, head: parts[0] == "HEAD") }
         if segs[1] == "s.ts", let pf = rt.prefetcher {
             let unit = PrefetchUnit(key: PrefetchStore.key(upstream), url: url, range: nil, start: 0, duration: 0)
@@ -273,7 +288,7 @@ final class LocalHLSProxy: @unchecked Sendable {
                 if let pf = rt.prefetcher, let units = HLSMedia.parse(original, base: final), units.allSatisfy({ $0.range == nil }) {
                     pf.setUnits(units)   // the variant AVPlayer actually chose
                 }
-                let text = rewrite(original, base: final, token: segs[0])
+                let text = rewrite(original, base: final, token: segs[0], aesKey: rt.aesKey != nil)
                 reply(c, 200, "application/vnd.apple.mpegurl", Data(text.utf8))
             case "s.ts":
                 reply(c, 200, "video/mp2t", rt.strip ? Self.stripFakeHeader(d) : d)
@@ -458,7 +473,7 @@ final class LocalHLSProxy: @unchecked Sendable {
 
     // MARK: Playlist rewrite
 
-    private func rewrite(_ pl: String, base: URL, token: String) -> String {
+    private func rewrite(_ pl: String, base: URL, token: String, aesKey: Bool = false) -> String {
         func local(_ raw: String, _ kind: String) -> String {
             guard let u = URL(string: raw, relativeTo: base)?.absoluteURL else { return raw }
             return "http://127.0.0.1:\(port)/\(token)/\(kind)?u=\(Self.b64(u.absoluteString))"
@@ -470,7 +485,10 @@ final class LocalHLSProxy: @unchecked Sendable {
             if up.hasPrefix("#EXT-X-STREAM-INF") { expectPlaylist = true; return line }
             if up.hasPrefix("#EXT-X-KEY") || up.hasPrefix("#EXT-X-MAP") || up.hasPrefix("#EXT-X-MEDIA") || up.hasPrefix("#EXT-X-I-FRAME-STREAM-INF") {
                 guard let m = HTML.groups("URI\\s*=\\s*\"([^\"]+)\"", line) else { return line }
-                let kind = up.hasPrefix("#EXT-X-MEDIA") || up.hasPrefix("#EXT-X-I-FRAME") ? "p.m3u8" : "r"
+                let kind: String
+                if up.hasPrefix("#EXT-X-KEY") && aesKey { kind = "aeskey" }
+                else if up.hasPrefix("#EXT-X-MEDIA") || up.hasPrefix("#EXT-X-I-FRAME") { kind = "p.m3u8" }
+                else { kind = "r" }
                 return line.replacingOccurrences(of: m[1], with: local(m[1], kind))
             }
             if line.isEmpty || line.hasPrefix("#") { return line }
