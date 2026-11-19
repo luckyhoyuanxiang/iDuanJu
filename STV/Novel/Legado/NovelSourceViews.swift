@@ -216,7 +216,7 @@ struct NovelSearchView: View {
     private var field: some View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass").font(.system(size: 17, weight: .medium)).foregroundStyle(STVTheme.secondary)
-            TextField("", text: $query, prompt: Text("书名或作者").foregroundStyle(STVTheme.secondary))
+            TextField("", text: $query, prompt: Text("书名或作者").foregroundColor(STVTheme.secondary))
                 .focused($focused).submitLabel(.search).onSubmit(run)
                 .font(.system(size: 16)).foregroundStyle(STVTheme.text).tint(STVTheme.accent)
                 .autocorrectionDisabled().textInputAutocapitalization(.never)
@@ -240,7 +240,7 @@ struct NovelSearchView: View {
         VStack(spacing: 8) {
             HStack(spacing: 0) {
                 if done < total {
-                    Text("正在搜索 ") + Text("\(done)").foregroundStyle(STVTheme.text).bold() + Text(" / \(total) 个书源")
+                    Text("正在搜索 ") + Text("\(done)").foregroundColor(STVTheme.text).bold() + Text(" / \(total) 个书源")
                 } else {
                     Text("共 \(groups.count) 本 · \(total) 个书源")
                 }
