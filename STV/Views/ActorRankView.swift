@@ -48,7 +48,7 @@ import SwiftUI
 /// Embeddable list (Home tab) — no own ScrollView.
 struct ActorRankList: View {
     @State private var gender: HGRankedActor.Gender = .all
-`1@ObservedObject private var store = ActorRankStore.shared
+    @ObservedObject private var store = ActorRankStore.shared
 
     var body: some View {
         let list = store.filtered(gender)

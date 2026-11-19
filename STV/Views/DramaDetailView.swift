@@ -47,7 +47,7 @@ struct DramaDetailView: View {
     @State private var sourcesVerify: VerifyTarget?
     @State private var verifySheet: VerifyTarget?
     @Environment(\.zoomNS) private var ns
-`1@ObservedObject private var library = LibraryStore.shared
+    @ObservedObject private var library = LibraryStore.shared
 
 
     @State private var scrollY: CGFloat = 0

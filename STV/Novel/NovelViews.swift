@@ -35,7 +35,7 @@ struct NovelTextView: UIViewRepresentable {
 struct NovelHomeView: View {
     @ObservedObject private var legadoSourceStore = LegadoSourceStore.shared
     var embedded = false
-`1@ObservedObject private var store = NovelStore.shared
+    @ObservedObject private var store = NovelStore.shared
     @State private var importing = false
     @State private var busy = false
     @State private var errors: [String] = []

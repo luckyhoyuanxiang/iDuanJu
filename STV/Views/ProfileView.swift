@@ -6,8 +6,8 @@ struct ProfileView: View {
     @ObservedObject private var tgDownloads = TGDownloads.shared
     @ObservedObject private var tgStore = TGStore.shared
     @State private var message: String?
-`1@ObservedObject private var library = LibraryStore.shared
-`1@ObservedObject private var gate = SourceGate.shared
+    @ObservedObject private var library = LibraryStore.shared
+    @ObservedObject private var gate = SourceGate.shared
 
     var body: some View {
         ScrollView {

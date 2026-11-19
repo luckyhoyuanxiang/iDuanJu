@@ -154,7 +154,7 @@ struct NovelReaderView: View {
     @ObservedObject private var legadoSourceStore = LegadoSourceStore.shared
     @ObservedObject private var novelPrefs = NovelPrefs.shared
     @State private var book: NovelBook
-`1@ObservedObject private var store = NovelStore.shared
+    @ObservedObject private var store = NovelStore.shared
     @State private var prefs = NovelPrefs.shared
     @State private var fonts = NovelFonts.shared
     @State private var loader = NovelWebLoader.shared

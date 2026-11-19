@@ -6,8 +6,8 @@ struct ChannelFeedView: View {
     @ObservedObject private var tdLibService = TDLibService.shared
     @ObservedObject private var tgDownloads = TGDownloads.shared
     var embedded = false
-`1@ObservedObject private var store = TGStore.shared
-`1@ObservedObject private var gate = SourceGate.shared
+    @ObservedObject private var store = TGStore.shared
+    @ObservedObject private var gate = SourceGate.shared
     @State private var only: String?
     @State private var viewer: ViewerPayload?
     @State private var blockTarget: TGPost?

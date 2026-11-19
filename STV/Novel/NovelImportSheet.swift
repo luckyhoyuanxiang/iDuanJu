@@ -8,7 +8,7 @@ struct NovelImportSheet: View {
     /// 书源 page opens the sheet without the 书籍 group.
     var showBooks = true
     @Environment(\.dismiss) private var dismiss
-`1@ObservedObject private var store = LegadoSourceStore.shared
+    @ObservedObject private var store = LegadoSourceStore.shared
     @State private var url = ""
     @State private var busy = false
     @State private var fileImport = false

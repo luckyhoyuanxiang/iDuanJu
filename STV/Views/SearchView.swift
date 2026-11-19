@@ -19,7 +19,7 @@ struct SearchView: View {
     @State private var hotError: Error?
     @State private var discoverSeed = 0
     @State private var editingHistory = false
-`1@ObservedObject private var library = LibraryStore.shared
+    @ObservedObject private var library = LibraryStore.shared
 
     var body: some View {
         VStack(spacing: 10) {

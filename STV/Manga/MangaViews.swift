@@ -15,7 +15,7 @@ struct MangaHomeView: View {
     @State private var error: String?
     @State private var query = ""
     @State private var searching: String?
-`1@ObservedObject private var store = MangaStore.shared
+    @ObservedObject private var store = MangaStore.shared
 
     private var provider: MangaProvider { MangaFixtures.provider ?? source.provider }
     private var cats: [MangaCategory] { _ = PluginStore.shared.revision; return provider.categories }
@@ -130,7 +130,7 @@ struct MangaCell: View {
 /// 书架: favorites + offline chapters.
 struct MangaLibraryView: View {
     @ObservedObject private var sourceGate = SourceGate.shared
-`1@ObservedObject private var store = MangaStore.shared
+    @ObservedObject private var store = MangaStore.shared
     var body: some View {
         List {
             Section("收藏（\(store.favorites.count)）") {
@@ -165,7 +165,7 @@ struct MangaDetailView: View {
     @State private var error: String?
     @State private var ascending = true
     @State private var reader: ReaderTarget?
-`1@ObservedObject private var store = MangaStore.shared
+    @ObservedObject private var store = MangaStore.shared
     private var provider: MangaProvider { MangaFixtures.provider ?? item.source.provider }
 
     struct ReaderTarget: Identifiable { let chapters: [MangaChapter]; let index: Int; let page: Int; var id: Int { index } }
@@ -267,7 +267,7 @@ struct MangaReaderView: View {
     @State private var baseScale: CGFloat = 1
     @State private var visible: Set<Int> = []
     @Environment(\.dismiss) private var dismiss
-`1@ObservedObject private var store = MangaStore.shared
+    @ObservedObject private var store = MangaStore.shared
     private var provider: MangaProvider { MangaFixtures.provider ?? item.source.provider }
     private var chapter: MangaChapter { chapters[index] }
 

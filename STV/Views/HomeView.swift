@@ -237,8 +237,8 @@ private struct HomeFeedPage: View {
     @State private var legacyChannels: [HuangguoChannel] = []
     @State private var legacyError: Error?
     @State private var heroIndex = 0
-`1@ObservedObject private var cache = BoardCache.shared
-`1@ObservedObject private var library = LibraryStore.shared
+    @ObservedObject private var cache = BoardCache.shared
+    @ObservedObject private var library = LibraryStore.shared
     private let gutter: CGFloat = 16
     /// DEBUG `STV_HOME_SCROLL=bottom` opens the feed scrolled to the end (simulator screenshots).
     private static var debugAnchor: UnitPoint? {

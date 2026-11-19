@@ -23,7 +23,7 @@ struct PlayerScreen: View {
     var onSwitchSeries: (HGSeries) -> Void = { _ in }
     @StateObject private var co: PlaybackCoordinator
     @State private var seasons: [HGSeries] = []
-`1@ObservedObject private var danmaku = DanmakuSettings.shared
+    @ObservedObject private var danmaku = DanmakuSettings.shared
     /// 画面铺满 (aspectFill) vs 完整自适应 (aspect) — hongguo-open-player fitMode.
     @AppStorage("stv.player.fill") private var fillScreen = false
     /// Technical info strip (⋯ → 技术信息).
@@ -58,7 +58,7 @@ struct PlayerScreen: View {
     @State private var seekRun: (total: Int, at: Date)?
     @Environment(\.verticalSizeClass) private var vClass
     @Environment(\.dismiss) private var dismiss
-`1@ObservedObject private var library = LibraryStore.shared
+    @ObservedObject private var library = LibraryStore.shared
 
     private var landscape: Bool { vClass == .compact }
 
@@ -1489,8 +1489,8 @@ struct VerticalPager<Page: View>: UIViewControllerRepresentable {
             sv.isScrollEnabled = parent.scrollEnabled
             sv.contentSize = CGSize(width: pageSize.width, height: pageSize.height * CGFloat(max(1, parent.count)))
             let sel = min(max(0, parent.selection), max(0, parent.count - 1))
-            let window = Set(max(0, sel - 2)...min(parent.count - 1, sel + 2))
-            for key in children.keys where !window.contains(key) {
+            let window = Set(max(0, sel - 2)...max(max(0, sel - 2), min(parent.count - 1, sel + 2)))
+            for key in Array(children.keys) where !window.contains(key) {
                 guard let child = children.removeValue(forKey: key) else { continue }
                 child.view.removeFromSuperview()
                 child.removeFromParent()

@@ -23,7 +23,7 @@ import Combine
         var message = ""
     }
     @Published private(set) var downloadStates: [String: DownloadState] = [:]
-`1@ObservedObject private var store = NovelStore.shared
+    @ObservedObject private var store = NovelStore.shared
 
     private func key(_ b: NovelBook, _ i: Int) -> String { NovelStore.chapterFile(b, i).path }
 

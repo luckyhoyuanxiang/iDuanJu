@@ -3,7 +3,7 @@ import SwiftUI
 /// 我的 → 片源管理. 红果 is always on; 黄果 (18+) and long-video sites are opt-in and can be
 /// hidden behind Face ID (`SourceGate`).
 struct SourcesView: View {
-`1@ObservedObject private var gate = SourceGate.shared
+    @ObservedObject private var gate = SourceGate.shared
     @State private var message: String?
     @State private var bufferMB = BufferSettings.megabytes
     @State private var cacheBytes: Int64 = 0

@@ -3,7 +3,7 @@ import SwiftUI
 struct LibraryListView: View {
     enum Kind { case favorites, history }
     let kind: Kind
-`1@ObservedObject private var library = LibraryStore.shared
+    @ObservedObject private var library = LibraryStore.shared
     @Environment(\.zoomNS) private var ns
     @State private var confirmClear = false
 
