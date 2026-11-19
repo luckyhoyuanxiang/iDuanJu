@@ -139,7 +139,8 @@ import UIKit
     @Published private var statusObservation: NSKeyValueObservation?
     @Published private(set) var waitingForMedia = false
     @Published private var audioObservers: [NSObjectProtocol] = []
-    @Published private var nowPlaying: MPNowPlayingSession?
+    /// Now Playing 由 AVPlayer 自动发布（MPNowPlayingSession 在 iOS 16.1 释放时会留下悬空 KVO
+    /// 观察者，导致退出播放页必崩），不再单独持有会话。
     @Published private(set) var pipActive = false
     @Published var pipError: String?
     @Published private var restoringPiP = false
@@ -163,14 +164,10 @@ import UIKit
 
     func start() {
         guard observer == nil else { return }
-        let player = av.player
-        let session = MPNowPlayingSession(players: [player])
-        session.automaticallyPublishesNowPlayingInfo = true
-        nowPlaying = session
-        let commands = session.remoteCommandCenter
-        commands.playCommand.addTarget(self, action: #selector(remotePlay))
-        commands.pauseCommand.addTarget(self, action: #selector(remotePause))
-        commands.togglePlayPauseCommand.addTarget(self, action: #selector(remoteToggle))
+        // Lock-screen controls ride on AVPlayer's automatic Now Playing publishing (the .playback
+        // audio session is activated on play). No MPNowPlayingSession here: on iOS 16.1 its
+        // deallocation leaves dangling KVO observances on the player and the next -setRate traps
+        // (EXC_BREAKPOINT in _NSKeyValueObservationInfoGetObservances on exit).
         #if DEBUG
         // UI tests: an interruption that never ends (STV_FAKE_INTERRUPT=<seconds after start>).
         if let s = ProcessInfo.processInfo.environment["STV_FAKE_INTERRUPT"].flatMap(Double.init) {
@@ -223,10 +220,6 @@ import UIKit
         endObserver = nil
         audioObservers.forEach(NotificationCenter.default.removeObserver)
         audioObservers.removeAll()
-        if let commands = nowPlaying?.remoteCommandCenter {
-            [commands.playCommand, commands.pauseCommand, commands.togglePlayPauseCommand].forEach { $0.removeTarget(self) }
-        }
-        nowPlaying = nil
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         if pip?.isPictureInPictureActive == true {
             pip?.stopPictureInPicture()
@@ -239,11 +232,7 @@ import UIKit
         observer = nil
         engine.onPlaybackRequested = nil
         suppliedEngine?.stop()
-        // iOS 16.1: stopping the AVPlayer (setRate → KVO willChange) inside the view-teardown pass
-        // traps when the now-playing session was just released above (observation info invalidated
-        // under us). Stop on the next main-actor turn, outside this call stack.
-        let engineToStop = av
-        Task { @MainActor in engineToStop.stop() }
+        av.stop()
         readyIndex = nil
         current = nil
         backgrounded = false
@@ -546,7 +535,6 @@ import UIKit
                     let next = episodes.indices.filter { $0 > i && $0 <= i + 3 }.map { episodes[$0].vid }
                     Task { await HongguoClient.shared.prefetch(vids: next) }
                 }
-                _ = await nowPlaying?.becomeActiveIfPossible()
             } catch {
                 guard activation == token else { return }
                 errors[i] = error.localizedDescription
