@@ -17,6 +17,14 @@ final class HLSPlayback: NSObject, AVAssetResourceLoaderDelegate {
         self.keyHex = keyHex
     }
 
+    deinit { session.finishTasksAndInvalidate() }
+
+    /// Requests AVFoundation already cancelled (seek / episode switch / teardown while a fetch is
+    /// in flight). Finishing one again throws NSInternalInconsistencyException on iOS 16.1, and
+    /// that throw happens on this delegate dispatch queue — nothing catches it, so the app aborts.
+    /// 黄果 is the only source family that routes through this loader, hence “黄果 exits crash”.
+    private var cancelled: Set<ObjectIdentifier> = []
+
     func makeAsset(url: String) -> AVURLAsset? {
         guard var c = URLComponents(string: url) else { return nil }
         let isHLS = url.lowercased().contains(".m3u8") || url.contains("/m3u8/")
@@ -31,6 +39,7 @@ final class HLSPlayback: NSObject, AVAssetResourceLoaderDelegate {
         guard let url = req.request.url, let scheme = url.scheme else { return false }
         if scheme == Self.keyScheme {
             guard let key = Bytes.fromHex(keyHex), key.count == 16 else { req.finishLoading(with: URLError(.userAuthenticationRequired)); return true }
+            guard !req.isFinished else { return true }
             req.contentInformationRequest?.contentType = "public.data"
             req.contentInformationRequest?.contentLength = 16
             req.contentInformationRequest?.isByteRangeAccessSupported = false
@@ -44,16 +53,28 @@ final class HLSPlayback: NSObject, AVAssetResourceLoaderDelegate {
         var r = URLRequest(url: real)
         for (k, v) in headers { r.setValue(v, forHTTPHeaderField: k) }
         session.dataTask(with: r) { [weak self] data, resp, err in
-            guard let self, let data, err == nil, (resp as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? false else {
-                req.finishLoading(with: err ?? URLError(.badServerResponse)); return
+            // Every touch of the request is serialized on the delegate queue (didCancel arrives
+            // there too), so a cancelled request can never be finished twice.
+            self?.queue.async {
+                let id = ObjectIdentifier(req)
+                guard !(self?.cancelled.contains(id) ?? true), !req.isFinished else { self?.cancelled.remove(id); return }
+                guard let data, err == nil, (resp as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? false else {
+                    req.finishLoading(with: err ?? URLError(.badServerResponse)); self?.cancelled.remove(id); return
+                }
+                guard let self else { req.finishLoading(with: URLError(.cancelled)); self?.cancelled.remove(id); return }
+                let text = self.rewrite(HLSAdFilter.apply(String(decoding: data, as: UTF8.self), base: real), base: real)
+                req.contentInformationRequest?.contentType = "public.m3u-playlist"
+                req.contentInformationRequest?.contentLength = Int64(text.utf8.count)
+                req.dataRequest?.respond(with: Data(text.utf8))
+                req.finishLoading()
+                self.cancelled.remove(id)
             }
-            let text = self.rewrite(HLSAdFilter.apply(String(decoding: data, as: UTF8.self), base: real), base: real)
-            req.contentInformationRequest?.contentType = "public.m3u-playlist"
-            req.contentInformationRequest?.contentLength = Int64(text.utf8.count)
-            req.dataRequest?.respond(with: Data(text.utf8))
-            req.finishLoading()
         }.resume()
         return true
+    }
+
+    func resourceLoader(_ resourceLoader: AVAssetResourceLoader, didCancel loadingRequest: AVAssetResourceLoadingRequest) {
+        cancelled.insert(ObjectIdentifier(loadingRequest))
     }
 
     /// Absolutize URIs; nested playlists go back through the loader, keys go to the local key scheme.
