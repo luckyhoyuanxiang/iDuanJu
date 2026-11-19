@@ -667,7 +667,7 @@ import UIKit
                 // All HLS — AES-128 with an out-of-band key included — through the loopback proxy.
                 // The AVAssetResourceLoader path (HLSPlayback) throws uncatchable ObjC exceptions on
                 // iOS 16.1 whenever AVPlayer cancels or stales a request; it aborted 黄果 playback.
-                guard let proxied = await self?.proxiedHLS(s, index: i), let u = URL(string: proxied) else {
+                guard let u = await self?.proxiedHLS(s, index: i) else {
                     throw ProviderError.upstream("本地播放代理启动失败")
                 }
                 return .direct(u)
