@@ -239,7 +239,11 @@ import UIKit
         observer = nil
         engine.onPlaybackRequested = nil
         suppliedEngine?.stop()
-        av.stop()
+        // iOS 16.1: stopping the AVPlayer (setRate → KVO willChange) inside the view-teardown pass
+        // traps when the now-playing session was just released above (observation info invalidated
+        // under us). Stop on the next main-actor turn, outside this call stack.
+        let engineToStop = av
+        Task { @MainActor in engineToStop.stop() }
         readyIndex = nil
         current = nil
         backgrounded = false
