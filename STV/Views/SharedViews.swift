@@ -218,12 +218,9 @@ struct ErrorStateView: View {
         return t.source == .huangguo ? "需要验证" : "需要站点验证（自动验证未通过）"
     }
     var body: some View {
-        ContentUnavailableView {
-            Label(title,
-                  systemImage: error.verifyTarget == nil ? "wifi.exclamationmark" : "shield.lefthalf.filled")
-        } description: {
-            Text(error.localizedDescription)
-        } actions: {
+        EmptyStateView(title: title,
+                       systemImage: error.verifyTarget == nil ? "wifi.exclamationmark" : "shield.lefthalf.filled",
+                       detail: error.localizedDescription) {
             if let t = error.verifyTarget {
                 Button("去验证") { verify = t }.buttonStyle(.borderedProminent).tint(STVTheme.accent)
                 Button("重试") { CFSolver.shared.resetCooldown(); retry() }.tint(STVTheme.secondary)

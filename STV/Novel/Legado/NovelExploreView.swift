@@ -174,7 +174,7 @@ struct NovelExploreView: View {
                     .frame(minHeight: 44)
                 }
                 .listRowBackground(STVTheme.card)
-            }.novelScreen().presentationCornerRadius(28).navigationTitle("切换榜单来源").toolbar { ToolbarItem(placement: .topBarLeading) { NovelBackButton { choosingSource = false } } }
+            }.novelScreen().presentationCornerRadius16(28).navigationTitle("切换榜单来源").toolbar { ToolbarItem(placement: .navigationBarLeading) { NovelBackButton { choosingSource = false } } }
         }
     }
     private var sourceControls: some View {

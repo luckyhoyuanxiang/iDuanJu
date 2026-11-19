@@ -279,7 +279,7 @@ private struct HomeFeedPage: View {
             .scrollOffsetReader(space: "homeFeedScroll")
         }
         .scrollIndicators(.hidden)
-        .coordinateSpace(.named("homeFeedScroll"))
+        .coordinateSpace(name: "homeFeedScroll")
         .onPreferenceChange(ScrollOffsetKey.self) { off in onScrolled(off > 4) }
         .accessibilityIdentifier("home.page.\(source.label)")
         .refreshable { if tab == .actorRank { await ActorRankStore.shared.reload() } else { boards.forEach { cache.load($0, force: true) } } }
@@ -401,7 +401,7 @@ private struct DynamicSiteFeed: View {
                 } else if pager.items.isEmpty && pager.isLoading {
                     cardsSkeleton.padding(.horizontal, 16)
                 } else if pager.items.isEmpty {
-                    ContentUnavailableView("该分类暂无内容", systemImage: "rectangle.stack", description: Text("部分采集站的父分类不直接提供资源，请选择动作片、国产剧等具体分类。"))
+                    EmptyStateView(title: "该分类暂无内容", systemImage: "rectangle.stack", detail: "部分采集站的父分类不直接提供资源，请选择动作片、国产剧等具体分类。")
                 } else {
                     NumberedGrid(items: pager.items, numbered: false, hasMore: pager.hasMore, loading: pager.isLoading) { pager.loadMore() }
                 }

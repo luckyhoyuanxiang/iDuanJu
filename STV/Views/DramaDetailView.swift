@@ -77,7 +77,7 @@ struct DramaDetailView: View {
             .padding(.bottom, 110)
             .scrollOffsetReader(space: "detail")
         }
-        .coordinateSpace(.named("detail"))
+        .coordinateSpace(name: "detail")
         .onPreferenceChange(ScrollOffsetKey.self) { scrollY = $0 }
         .scrollIndicators(.hidden)
         .accessibilityIdentifier("screen.detail")

@@ -45,7 +45,7 @@ struct NovelDownloadView: View {
             .novelScreen()
             .navigationTitle("缓存与下载")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .topBarLeading) { NovelBackButton { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .navigationBarLeading) { NovelBackButton { dismiss() } } }
         }
     }
 }

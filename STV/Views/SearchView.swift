@@ -36,7 +36,7 @@ struct SearchView: View {
             if let q = initialQuery, submitted.isEmpty, !q.isEmpty { query = q; submit() }
             if hot.isEmpty { await loadHot() }
         }
-        .onChange(of: source) { run() }
+        .onChange(of: source) { _ in run() }
     }
 
     // MARK: landing
@@ -98,7 +98,7 @@ struct SearchView: View {
             TextTabStrip(items: SourceGate.shared.searchSources, selection: $source) { $0.label }
             if let e = pager.error, pager.items.isEmpty { ErrorStateView(error: e) { run() } }
             else if !pager.isLoading && pager.items.isEmpty {
-                ContentUnavailableView.search(text: submitted)
+                EmptyStateView(title: "没有找到「\(submitted)」的搜索结果", systemImage: "magnifyingglass")
             } else {
                 NumberedGrid(items: pager.items, numbered: false, hasMore: pager.hasMore, loading: pager.isLoading) { pager.loadMore() }
             }

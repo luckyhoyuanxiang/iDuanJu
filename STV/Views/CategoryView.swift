@@ -40,7 +40,7 @@ struct CategoryView: View {
                 .scrollOffsetReader(space: "categoryScroll")
             }
             .scrollIndicators(.hidden)
-            .coordinateSpace(.named("categoryScroll"))
+            .coordinateSpace(name: "categoryScroll")
             .onPreferenceChange(ScrollOffsetKey.self) { off in
                 withAnimation(.easeOut(duration: 0.2)) { scrolled = off > 6 }
             }
@@ -60,12 +60,12 @@ struct CategoryView: View {
             if mode == .filter, panel == nil { await loadPanel() }
             if pager.items.isEmpty { reload() }
         }
-        .onChange(of: mode) {
+        .onChange(of: mode) { _ in
             collapsed = false
             Task { if mode == .filter, panel == nil { await loadPanel() }; reload() }
         }
-        .onChange(of: genre) { if !genre.subs.contains(sub) { sub = genre.subs[0] }; reload() }
-        .onChange(of: sub) { reload() }
+        .onChange(of: genre) { _ in if !genre.subs.contains(sub) { sub = genre.subs[0] }; reload() }
+        .onChange(of: sub) { _ in reload() }
     }
 
     /// `.topfade`: page colour under the status bar, fading out over the content once it scrolls.

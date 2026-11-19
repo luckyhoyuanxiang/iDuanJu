@@ -69,7 +69,7 @@ struct NovelImportSheet: View {
         }
         .presentationDetents(showBooks ? [.height(640), .large] : [.height(520), .large])
         .presentationDragIndicator(.hidden)
-        .presentationCornerRadius(28)
+        .presentationCornerRadius16(28)
         .presentationBackground16(STVTheme.sheet)
         .fileImporter(isPresented: $fileImport, allowedContentTypes: [.json, .plainText, .text]) { r in
             guard case .success(let u) = r else { return }

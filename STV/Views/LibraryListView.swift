@@ -31,7 +31,7 @@ struct LibraryListView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if kind == .history, !library.continueWatching.isEmpty {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button("清空") { confirmClear = true }.accessibilityIdentifier("history.clear")
                 }
             }
@@ -78,6 +78,6 @@ struct LibraryListView: View {
     }
 
     private func empty(_ t: String, _ icon: String) -> some View {
-        ContentUnavailableView(t, systemImage: icon).padding(.top, 80)
+        EmptyStateView(title: t, systemImage: icon).padding(.top, 80)
     }
 }

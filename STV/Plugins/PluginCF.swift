@@ -23,7 +23,12 @@ import SwiftUI
 
     static func configuration(_ pluginID: String) -> WKWebViewConfiguration {
         let cfg = WKWebViewConfiguration()
-        cfg.websiteDataStore = WKWebsiteDataStore(forIdentifier: storeID(pluginID))
+        if #available(iOS 17.0, *) {
+            cfg.websiteDataStore = WKWebsiteDataStore(forIdentifier: storeID(pluginID))
+        } else {
+            // iOS 16 has no per-identifier WebKit stores; use the shared one.
+            cfg.websiteDataStore = .default()
+        }
         let v = UIDevice.current.systemVersion.split(separator: ".").prefix(2).joined(separator: ".")
         cfg.applicationNameForUserAgent = "Version/\(v) Mobile/15E148 Safari/604.1"
         return cfg
@@ -33,7 +38,12 @@ import SwiftUI
     static func removeStore(_ pluginID: String) async {
         shared.webs[pluginID]?.removeFromSuperview()
         shared.webs[pluginID] = nil
-        try? await WKWebsiteDataStore.remove(forIdentifier: storeID(pluginID))
+        if #available(iOS 17.0, *) {
+            try? await WKWebsiteDataStore.remove(forIdentifier: storeID(pluginID))
+        } else {
+            // iOS 16 fallback: clear the shared store (coarse but functional).
+            WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: Date.distantPast) { }
+        }
     }
 
     // MARK: Blocking bridges for the plugin thread

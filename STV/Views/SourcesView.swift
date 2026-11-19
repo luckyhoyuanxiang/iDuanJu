@@ -313,7 +313,7 @@ struct SiteLogView: View {
         .navigationTitle("站点诊断日志")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .navigationBarTrailing) {
                 Button(copied ? "已复制" : "复制") {
                     UIPasteboard.general.string = (summary + [""] + lines).joined(separator: "\n"); copied = true
                 }

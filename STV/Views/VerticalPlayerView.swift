@@ -290,8 +290,6 @@ struct PlayerScreen: View {
 
     // MARK: Episode feed
 
-    @State private var lastCurrent: Int?
-
     private var episodeFeed: some View {
         VerticalPager(
             count: co.episodes.count,
@@ -1510,7 +1508,7 @@ struct VerticalPager<Page: View>: UIViewControllerRepresentable {
             }
             // Follow programmatic selection changes (autoNext / episode picker) unless the user is driving.
             let target = CGPoint(x: 0, y: CGFloat(sel) * pageSize.height)
-            if !isProgrammatic, sv.contentOffset != target, !sv.dragging, !sv.decelerating, parent.scrollEnabled {
+            if !isProgrammatic, sv.contentOffset != target, !sv.isDragging, !sv.isDecelerating, parent.scrollEnabled {
                 isProgrammatic = true
                 sv.setContentOffset(target, animated: true)
             }

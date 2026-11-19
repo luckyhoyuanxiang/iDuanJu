@@ -55,9 +55,9 @@ struct NovelSourceLoginView: View {
             .navigationTitle(source.bookSourceName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { NovelBackButton { dismiss() } }
+                ToolbarItem(placement: .navigationBarLeading) { NovelBackButton { dismiss() } }
                 if !fields.filter({ $0.type != "button" }).isEmpty {
-                    ToolbarItem(placement: .topBarTrailing) { Button("保存") { save(); message = "已保存" } }
+                    ToolbarItem(placement: .navigationBarTrailing) { Button("保存") { save(); message = "已保存" } }
                 }
             }
             .onAppear {

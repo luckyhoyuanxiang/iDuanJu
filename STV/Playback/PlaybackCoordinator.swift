@@ -44,6 +44,8 @@ import UIKit
     }
 
     static let rateSteps: [Double] = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.5, 3.0]
+    /// The AVFoundation options key, spelled out because the symbol is annotated iOS 17+.
+    private static let avURLAssetOverrideMIMETypeKey = "AVURLAssetOverrideMIMETypeKey"
 
     let series: HGSeries
     @Published var detail: HGSeriesDetail?

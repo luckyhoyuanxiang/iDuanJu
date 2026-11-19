@@ -652,3 +652,39 @@ extension View {
         if #available(iOS 16.4, *) { self.presentationBackground(color) } else { self }
     }
 }
+/// iOS 16 replacement for `ContentUnavailableView` (iOS 17+): centered icon, title, description and actions.
+struct EmptyStateView<Actions: View>: View {
+    let title: String
+    var systemImage: String?
+    var detail: String?
+    @ViewBuilder var actions: Actions
+
+    init(title: String, systemImage: String? = nil, detail: String? = nil,
+         @ViewBuilder actions: () -> Actions = { EmptyView() }) {
+        self.title = title
+        self.systemImage = systemImage
+        self.detail = detail
+        self.actions = actions()
+    }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            if let systemImage {
+                Image(systemName: systemImage).font(.system(size: 40, weight: .light)).foregroundStyle(.secondary)
+            }
+            Text(title).font(.headline)
+            if let detail {
+                Text(detail).font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            }
+            actions
+        }
+        .padding(28).frame(maxWidth: .infinity)
+    }
+}
+
+extension View {
+    /// iOS 16.4 gate for `.presentationCornerRadius(_:)` (default sheet corners below 16.4).
+    @ViewBuilder func presentationCornerRadius16(_ radius: CGFloat) -> some View {
+        if #available(iOS 16.4, *) { self.presentationCornerRadius(radius) } else { self }
+    }
+}
