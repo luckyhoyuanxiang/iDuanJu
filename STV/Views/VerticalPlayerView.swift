@@ -892,7 +892,8 @@ struct PlayerScreen: View {
     private let edgeBackWidth: CGFloat = 36
 
     private func enterSpeedMode() {
-        let base = co.lockedRate ?? co.playbackRate
+        // 长按直接进入 2×（不拖动也是 2×）；已经倍速/锁定倍速时沿用当前倍速。
+        let base = co.lockedRate ?? (co.playbackRate == 1.0 ? 2.0 : co.playbackRate)
         previewRate = base
         speedBaseIndex = PlaybackCoordinator.stepIndex(of: base)
         lastStepOffset = 0
