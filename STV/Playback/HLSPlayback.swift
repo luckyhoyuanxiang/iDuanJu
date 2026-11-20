@@ -38,13 +38,44 @@ final class HLSPlayback: NSObject, AVAssetResourceLoaderDelegate {
     func resourceLoader(_ loader: AVAssetResourceLoader, shouldWaitForLoadingOfRequestedResource req: AVAssetResourceLoadingRequest) -> Bool {
         guard let url = req.request.url, let scheme = url.scheme else { return false }
         if scheme == Self.keyScheme {
-            guard let key = Bytes.fromHex(keyHex), key.count == 16 else { req.finishLoading(with: URLError(.userAuthenticationRequired)); return true }
-            guard !req.isFinished else { return true }
-            req.contentInformationRequest?.contentType = "public.data"
-            req.contentInformationRequest?.contentLength = 16
-            req.contentInformationRequest?.isByteRangeAccessSupported = false
-            req.dataRequest?.respond(with: Data(key))
-            req.finishLoading()
+            // AES key request. Serve the resolved hex key when we have one; otherwise fetch the
+            // real key URI (carried in the ?u= query since the rewrite). NEVER call
+            // finishLoadingWithError: — on iOS 16.1 it throws NSInternalInconsistencyException on
+            // this dispatch queue and aborts the app; failures degrade to placeholder bytes.
+            let keyURI = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "u" })?.value
+            queue.async {
+                guard !req.isFinished else { return }
+                if let key = Bytes.fromHex(self.keyHex), key.count == 16 {
+                    req.contentInformationRequest?.contentType = "public.data"
+                    req.contentInformationRequest?.contentLength = 16
+                    req.contentInformationRequest?.isByteRangeAccessSupported = false
+                    req.dataRequest?.respond(with: Data(key))
+                    req.finishLoading()
+                    return
+                }
+                guard let keyURL = keyURI.flatMap(URL.init(string:)) else {
+                    let zeros = Data(repeating: 0, count: 16)
+                    req.contentInformationRequest?.contentType = "public.data"
+                    req.contentInformationRequest?.contentLength = 16
+                    req.contentInformationRequest?.isByteRangeAccessSupported = false
+                    req.dataRequest?.respond(with: zeros)
+                    req.finishLoading()
+                    return
+                }
+                var r = URLRequest(url: keyURL)
+                for (k, v) in self.headers { r.setValue(v, forHTTPHeaderField: k) }
+                self.session.dataTask(with: r) { keyData, _, _ in
+                    self.queue.async {
+                        guard !req.isFinished else { return }
+                        let bytes = (keyData?.isEmpty == false) ? keyData! : Data(repeating: 0, count: 16)
+                        req.contentInformationRequest?.contentType = "public.data"
+                        req.contentInformationRequest?.contentLength = Int64(bytes.count)
+                        req.contentInformationRequest?.isByteRangeAccessSupported = false
+                        req.dataRequest?.respond(with: bytes)
+                        req.finishLoading()
+                    }
+                }.resume()
+            }
             return true
         }
         guard scheme.hasPrefix(Self.plScheme), var c = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return false }
@@ -59,9 +90,16 @@ final class HLSPlayback: NSObject, AVAssetResourceLoaderDelegate {
                 let id = ObjectIdentifier(req)
                 guard !(self?.cancelled.contains(id) ?? true), !req.isFinished else { self?.cancelled.remove(id); return }
                 guard let data, err == nil, (resp as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? false else {
-                    req.finishLoading(with: err ?? URLError(.badServerResponse)); self?.cancelled.remove(id); return
+                    // iOS 16.1: finishLoadingWithError throws on this queue (abort). Serve an empty
+                    // playlist instead — the player stalls gracefully instead of crashing.
+                    let empty = Data("#EXTM3U\n".utf8)
+                    req.contentInformationRequest?.contentType = "public.m3u-playlist"
+                    req.contentInformationRequest?.contentLength = Int64(empty.count)
+                    req.dataRequest?.respond(with: empty)
+                    req.finishLoading()
+                    self?.cancelled.remove(id); return
                 }
-                guard let self else { req.finishLoading(with: URLError(.cancelled)); self?.cancelled.remove(id); return }
+                guard let self else { return }
                 let text = self.rewrite(HLSAdFilter.apply(String(decoding: data, as: UTF8.self), base: real), base: real)
                 req.contentInformationRequest?.contentType = "public.m3u-playlist"
                 req.contentInformationRequest?.contentLength = Int64(text.utf8.count)
@@ -93,7 +131,11 @@ final class HLSPlayback: NSObject, AVAssetResourceLoaderDelegate {
                 let isKey = line.uppercased().hasPrefix("#EXT-X-KEY")
                 guard let m = HTML.groups("URI\\s*=\\s*\"([^\"]+)\"", line), let u = abs(m[1]) else { return line }
                 let repl: String
-                if isKey { repl = keyHex.isEmpty ? u.absoluteString : Self.keyScheme + "://key" }
+                if isKey {
+                    var kc = URLComponents(string: Self.keyScheme + "://key")
+                    kc?.queryItems = [URLQueryItem(name: "u", value: u.absoluteString)]
+                    repl = kc?.url?.absoluteString ?? u.absoluteString
+                }
                 else if line.uppercased().hasPrefix("#EXT-X-MEDIA") { repl = via(u, Self.plScheme) }
                 else { repl = u.absoluteString }
                 return line.replacingOccurrences(of: m[1], with: repl)
