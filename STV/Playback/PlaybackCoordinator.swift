@@ -193,7 +193,6 @@ final class PlaybackCoordinator: NSObject, @preconcurrency AVPictureInPictureCon
     private var statusObservation: NSKeyValueObservation?
     @Published private(set) var waitingForMedia = false
     private var audioObservers: [NSObjectProtocol] = []
-    private var nowPlaying: MPNowPlayingSession?
     @Published private(set) var pipActive = false
     @Published var pipError: String?
     private var restoringPiP = false
@@ -217,14 +216,10 @@ final class PlaybackCoordinator: NSObject, @preconcurrency AVPictureInPictureCon
 
     func start() {
         guard observer == nil else { return }
-        let player = av.player
-        let session = MPNowPlayingSession(players: [player])
-        session.automaticallyPublishesNowPlayingInfo = true
-        nowPlaying = session
-        let commands = session.remoteCommandCenter
-        commands.playCommand.addTarget(self, action: #selector(remotePlay))
-        commands.pauseCommand.addTarget(self, action: #selector(remotePause))
-        commands.togglePlayPauseCommand.addTarget(self, action: #selector(remoteToggle))
+        // Lock-screen controls ride on AVPlayer's automatic Now Playing publishing (and the shared
+        // remote commands below cover the MPV engine). No MPNowPlayingSession: on iOS 16.1 its
+        // deallocation leaves dangling KVO observances on the player and the next -setRate traps
+        // (EXC_BREAKPOINT) — every exit from the player aborted the app.
         #if DEBUG
         // UI tests: an interruption that never ends (STV_FAKE_INTERRUPT=<seconds after start>).
         if let s = ProcessInfo.processInfo.environment["STV_FAKE_INTERRUPT"].flatMap(Double.init) {
@@ -255,7 +250,8 @@ final class PlaybackCoordinator: NSObject, @preconcurrency AVPictureInPictureCon
         registerSharedCommands()
     }
 
-    /// Lock-screen / headset commands while Aether plays (AVPlayer's own MPNowPlayingSession covers the fallback).
+    /// Shared lock-screen / headset commands (the MPV engine publishes its own Now Playing info;
+    /// AVPlayer auto-publishes).
     private func registerSharedCommands() {
         guard !sharedCommandsRegistered else { return }
         sharedCommandsRegistered = true
@@ -312,16 +308,12 @@ final class PlaybackCoordinator: NSObject, @preconcurrency AVPictureInPictureCon
         av.stop()
         mpvInstance?.shutdown()
         mpvInstance = nil
-        if let commands = nowPlaying?.remoteCommandCenter {
-            [commands.playCommand, commands.pauseCommand, commands.togglePlayPauseCommand].forEach { $0.removeTarget(self) }
-        }
         if sharedCommandsRegistered {
             let c = MPRemoteCommandCenter.shared()
             [c.playCommand, c.pauseCommand, c.togglePlayPauseCommand].forEach { $0.removeTarget(self) }
             sharedCommandsRegistered = false
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         }
-        nowPlaying = nil
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         if pip?.isPictureInPictureActive == true {
             pip?.stopPictureInPicture()
         }
@@ -684,7 +676,7 @@ final class PlaybackCoordinator: NSObject, @preconcurrency AVPictureInPictureCon
                     let next = episodes.indices.filter { $0 > i && $0 <= i + 3 }.map { episodes[$0].vid }
                     Task { await HongguoClient.shared.prefetch(vids: next) }
                 }
-                if engineKind == .avplayer { _ = await nowPlaying?.becomeActiveIfPossible() } else { publishNowPlaying() }
+                if engineKind == .mpv { publishNowPlaying() }
             } catch {
                 guard activation == token else { return }
                 errors[i] = error.localizedDescription
