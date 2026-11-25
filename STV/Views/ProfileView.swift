@@ -12,7 +12,6 @@ struct ProfileView: View {
             VStack(alignment: .leading, spacing: 22) {
                 Text("我的").font(.largeTitle.weight(.heavy)).foregroundStyle(STVTheme.text).padding(.horizontal, 16)
                 hongguoAccountCard
-                if !library.continueWatching.isEmpty { ContinueRow(items: library.continueWatching) }
                 VStack(alignment: .leading, spacing: 10) {
                     SectionHeader(title: "我的收藏", trailing: AnyView(NavigationLink(value: Route.favorites) {
                         Text("全部 \(library.favorites.count)").font(.subheadline).foregroundStyle(STVTheme.secondary)

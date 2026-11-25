@@ -284,9 +284,6 @@ private struct HomeFeedPage: View {
                             .padding(.top, 16)
                             .transition(.opacity)
                     }
-                    if source == .hongguo, !library.continueWatching.isEmpty {
-                        HomeContinueRow(items: library.continueWatching).padding(.top, 24)
-                    }
                     sections
                 }
             }
@@ -375,7 +372,7 @@ private struct HomeFeedPage: View {
                         }
                     }
                 }
-                .padding(.top, n == 0 && heroPicks.isEmpty && library.continueWatching.isEmpty ? 18 : 24)
+                .padding(.top, n == 0 && heroPicks.isEmpty ? 18 : 24)
                 .onAppear { cache.load(b) }
             }
         }
