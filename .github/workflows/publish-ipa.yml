@@ -1,0 +1,42 @@
+name: publish ipa to release
+
+# 将某次 package 构建的 ios-unsigned 产物挂到公开 Release（便于免鉴权下载）。
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Package run id (source of ios-unsigned artifact)'
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  attach:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Download ipa artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh run download "${{ inputs.run_id }}" -n ios-unsigned -D dist
+          ls -l dist
+          (cd dist && sha256sum *.ipa > SHA256SUMS.txt)
+          cat dist/SHA256SUMS.txt
+      - name: Attach to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          TAG=ios16-test
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "iOS 16 移植测试包" --notes "未签名 iOS 16 构建测试包（最低 iOS 16.0），需自行重签侧载。产物来自 Actions 运行 ${{ inputs.run_id }}。" --target ios16
+          fi
+          gh release upload "$TAG" dist/*.ipa dist/SHA256SUMS.txt --clobber
