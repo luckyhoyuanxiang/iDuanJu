@@ -30,6 +30,19 @@ import AVKit
         XCTFail("episode \(index) never became ready")
     }
 
+    func testTeardownIsIdempotentButAllowsANewPlaybackLifecycle() async throws {
+        let e = TestPlayerEngine(); let co = coordinator(e)
+        defer { co.teardown() }
+        co.select(0); try await ready(co, 0)
+        co.teardown()
+        co.teardown()
+        XCTAssertEqual(e.stopCount, 1, "exit and onDisappear must not stop the same engine twice")
+
+        co.start()
+        co.teardown()
+        XCTAssertEqual(e.stopCount, 2, "a later mounted lifecycle must still clean up")
+    }
+
     func testInternalPauseDuringEpisodeReplacementDoesNotCancelAutoplay() async throws {
         let e = TestPlayerEngine(); let co = coordinator(e)
         defer { co.teardown() }
@@ -268,6 +281,7 @@ import AVKit
     /// Fail this many loads, then succeed.
     var failLoads = 0
     var loads = 0
+    var stopCount = 0
     var lastStart: Double?
     /// Accept seeks without moving the clock (a core still fetching).
     var holdSeeks = false
@@ -284,7 +298,7 @@ import AVKit
     func pause() { isPaused = true; if notifyInternalPause { onPlaybackRequested?(false) } }
     func setRate(_ rate: Double) {}
     func seek(to seconds: Double) async { if !holdSeeks { currentTime = seconds } }
-    func stop() { isPaused = true }
+    func stop() { stopCount += 1; isPaused = true }
     func selectAudio(_ id: Int) {}
     func selectSubtitle(_ id: Int?) {}
     func tech(stream: HGStream?) async -> PlayerTech { PlayerTech() }
